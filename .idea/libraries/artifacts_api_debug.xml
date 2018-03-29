@@ -1,0 +1,10 @@
+<component name="libraryTable">
+  <library name="artifacts:api-debug">
+    <CLASSES>
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/api-debug.aar/0cc7f3a9cd0be23383f719154cbf0567/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/api-debug.aar/0cc7f3a9cd0be23383f719154cbf0567/res" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
