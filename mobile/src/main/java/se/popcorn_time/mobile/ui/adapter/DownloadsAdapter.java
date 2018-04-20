@@ -203,18 +203,18 @@ public class DownloadsAdapter extends CursorAdapter {
 
         private void init() {
             inflate(getContext(), R.layout.view_item_download, DownloadView.this);
-            poster = (ImageView) findViewById(R.id.poster);
+            poster = findViewById(R.id.poster);
             poster.setOnClickListener(posterActionListener);
-            posterAction = (ImageButton) findViewById(R.id.btn_poster_action);
+            posterAction = findViewById(R.id.btn_poster_action);
             posterAction.setOnClickListener(posterActionListener);
-            title = (TextView) findViewById(R.id.title);
-            size = (TextView) findViewById(R.id.size);
-            summary = (TextView) findViewById(R.id.summary);
-            progress = (ProgressBar) findViewById(R.id.progress);
-            status = (TextView) findViewById(R.id.status);
-            progressPercentage = (TextView) findViewById(R.id.percent);
-            watchNow = (Button) findViewById(R.id.watch);
-            download = (ImageButton) findViewById(R.id.download);
+            title = findViewById(R.id.title);
+            size = findViewById(R.id.size);
+            summary = findViewById(R.id.summary);
+            progress = findViewById(R.id.progress);
+            status = findViewById(R.id.status);
+            progressPercentage = findViewById(R.id.percent);
+            watchNow = findViewById(R.id.watch);
+            download = findViewById(R.id.download);
             download.setOnClickListener(new OnClickListener() {
 
                 @Override
@@ -222,7 +222,7 @@ public class DownloadsAdapter extends CursorAdapter {
                     downloadsClient.downloadsResume(info);
                 }
             });
-            pause = (ImageButton) findViewById(R.id.pause);
+            pause = findViewById(R.id.pause);
             pause.setOnClickListener(new OnClickListener() {
 
                 @Override
@@ -230,7 +230,7 @@ public class DownloadsAdapter extends CursorAdapter {
                     downloadsClient.downloadsPause(info);
                 }
             });
-            remove = (ImageButton) findViewById(R.id.remove);
+            remove = findViewById(R.id.remove);
             remove.setOnClickListener(new OnClickListener() {
 
                 @Override

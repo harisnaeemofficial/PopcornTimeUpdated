@@ -31,8 +31,10 @@ android {
         buildConfigField('String[]', 'CONFIG_DOMAINS', 'null')
         buildConfigField('String[]', 'UPDATER_DOMAINS', 'null');
         buildConfigField('String', 'FIREBASE_DEV_TOPIC', 'null');
-
-        buildConfigField('boolean', 'IS_APP_FULL', 'true');
+    }
+    compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
     }
     dexOptions {
         javaMaxHeapSize '4g'
@@ -42,6 +44,14 @@ android {
         exclude 'META-INF/maven/com.squareup.okio/okio/pom.properties'
         exclude 'META-INF/maven/com.squareup.okhttp3/okhttp/pom.xml'
         exclude 'META-INF/maven/com.squareup.okhttp3/okhttp/pom.properties'
+        exclude 'META-INF/DEPENDENCIES'
+        exclude 'META-INF/LICENSE'
+        exclude 'META-INF/LICENSE.txt'
+        exclude 'META-INF/license.txt'
+        exclude 'META-INF/NOTICE'
+        exclude 'META-INF/NOTICE.txt'
+        exclude 'META-INF/notice.txt'
+        exclude 'META-INF/ASL2.0'
     }
     buildTypes {
         release {
@@ -63,17 +73,18 @@ android {
 }
 
 dependencies {
+    implementation 'com.android.support.constraint:constraint-layout:1.0.2'
     compile fileTree(include: ['*.jar'], dir: 'libs')
-    compile 'com.android.support:multidex:1.0.2'
-    compile 'com.android.support:recyclerview-v7:27.1.0'
-    compile 'com.android.support:preference-v14:27.1.0'
-    compile 'com.android.support:design:27.1.0'
-    compile 'com.android.support:cardview-v7:27.1.0'
-    compile 'com.android.support:palette-v7:27.1.0'
+    compile 'com.android.support:multidex:1.0.3'
+    compile 'com.android.support:recyclerview-v7:27.1.1'
+    compile 'com.android.support:preference-v14:27.1.1'
+    compile 'com.android.support:design:27.1.1'
+    compile 'com.android.support:cardview-v7:27.1.1'
+    compile 'com.android.support:palette-v7:27.1.1'
     compile 'me.grantland:autofittextview:0.2.+'
     compile 'com.squareup.picasso:picasso:2.5.2'
     compile 'com.jakewharton.picasso:picasso2-okhttp3-downloader:1.1.0'
-    compile 'me.imid.swipebacklayout.lib:library:1.1.0'
+    compile 'com.jude:swipebackhelper:3.1.2'
     compile project(':base')
     compile project(':vlc')
 }

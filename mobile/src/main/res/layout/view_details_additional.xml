@@ -210,4 +210,22 @@
             tools:text="@string/torrents" />
     </LinearLayout>
 
+    <LinearLayout
+        android:id="@+id/imdb_info"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:id="@+id/top_cast"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+
+
+        </LinearLayout>
+
+    </LinearLayout>
+
 </LinearLayout>

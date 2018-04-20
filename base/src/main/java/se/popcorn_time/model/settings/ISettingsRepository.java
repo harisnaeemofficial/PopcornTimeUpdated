@@ -38,9 +38,9 @@ public interface ISettingsRepository {
     void setSubtitlesFontColor(@NonNull String subtitlesFontColor);
 
     @Nullable
-    Boolean isDownloadsCheckVpn();
+    Boolean isKeepCpuAwake();
 
-    void setDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn);
+    void setKeepCpuAwake(@NonNull Boolean downloadsCheckVpn);
 
     @NonNull
     Boolean isDownloadsWifiOnly();

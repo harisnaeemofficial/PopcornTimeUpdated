@@ -1,10 +1,17 @@
 package se.popcorn_time.mobile.ui.adapter;
 
+import android.content.res.ColorStateList;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.RippleDrawable;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.graphics.Palette;
 import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
 import android.view.Display;
@@ -12,10 +19,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
+import com.squareup.picasso.Target;
 
 import java.util.List;
 import java.util.Locale;
@@ -23,6 +33,7 @@ import java.util.Locale;
 import se.popcorn_time.VibrantUtils;
 import se.popcorn_time.base.database.tables.Favorites;
 import se.popcorn_time.base.model.video.info.VideoInfo;
+import se.popcorn_time.base.utils.Logger;
 import se.popcorn_time.mobile.R;
 import se.popcorn_time.mobile.ui.DetailsActivity;
 
@@ -98,7 +109,7 @@ public final class ContentAdapter extends RecyclerView.Adapter<ContentAdapter.Vi
 
         @Override
         public void onClick(View v) {
-            VibrantUtils.setAccentColor(((BitmapDrawable) poster.getDrawable()).getBitmap(), ContextCompat.getColor(v.getContext(), R.color.v3_accent));
+            VibrantUtils.setAccentColor(((BitmapDrawable) poster.getDrawable()).getBitmap(), ContextCompat.getColor(itemView.getContext(), R.color.v3_accent));
             DetailsActivity.start(v.getContext(), info);
         }
 

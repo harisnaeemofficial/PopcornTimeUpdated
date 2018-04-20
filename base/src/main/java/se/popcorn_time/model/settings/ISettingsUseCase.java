@@ -76,12 +76,12 @@ public interface ISettingsUseCase {
     Observable<String> getSubtitlesFontColorObservable();
 
     @Nullable
-    Boolean isDownloadsCheckVpn();
+    Boolean isKeepCpuAwakeEnabled();
 
-    void setDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn);
+    void setKeepCpuAwake(@NonNull Boolean keepCpuAwake);
 
     @NonNull
-    Observable<Boolean> getDownloadsCheckVpnObservable();
+    Observable<Boolean> getKeepCpuAwakeObservable();
 
     @NonNull
     Boolean isDownloadsWifiOnly();

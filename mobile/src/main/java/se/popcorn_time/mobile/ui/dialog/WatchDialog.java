@@ -52,7 +52,6 @@ import se.popcorn_time.mvp.IViewRouter;
 
 public class WatchDialog extends DialogFragment implements WatchListener {
 
-    private ImageView vpnAlertIcon;
     private ImageView popcorn;
     private ViewGroup statusLayout;
     private ProgressBar statusProgress;
@@ -67,6 +66,7 @@ public class WatchDialog extends DialogFragment implements WatchListener {
     private Animation alertIconAnimation;
 
     private String loadedSubtitlesPath;
+    private boolean stopped;
 
     @Override
     public void onSaveInstanceState(Bundle outState) {
@@ -167,27 +167,28 @@ public class WatchDialog extends DialogFragment implements WatchListener {
     public void onStart() {
         super.onStart();
         watchClient.bind();
+        stopped = true;
+        Logger.debug("stopped: "+stopped);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        if (vpnAlertIcon != null) {
-            vpnAlertIcon.startAnimation(alertIconAnimation);
-        }
+        stopped = false;
+        Logger.debug("stopped: "+stopped);
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        if (vpnAlertIcon != null) {
-            vpnAlertIcon.clearAnimation();
-        }
+        stopped = true;
+        Logger.debug("stopped: "+stopped);
     }
 
     @Override
     public void onStop() {
         super.onStop();
+        stopped = true;
         watchClient.removeWatchListener(WatchDialog.this);
         watchClient.unbind();
     }
@@ -256,6 +257,12 @@ public class WatchDialog extends DialogFragment implements WatchListener {
         if (getActivity() == null || getActivity().getBaseContext() == null) {
             return;
         }
+        if (stopped) {
+            Intent intent = new Intent(getActivity(),
+                    getActivity().getClass());
+            intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            startActivity(intent);
+        }
         if (watchInfo != null) {
             if (watchInfo.isDownloads()) {
                 Downloads.readyToWatch(getContext(), watchInfo.downloadsId);
@@ -297,6 +304,13 @@ public class WatchDialog extends DialogFragment implements WatchListener {
             this.watchInfo = watchInfo;
             super.show(fm, tag);
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        //watchClient.removeWatchListener(WatchDialog.this);
+        //watchClient.unbind();
+        super.onDestroy();
     }
 
     public void close() {

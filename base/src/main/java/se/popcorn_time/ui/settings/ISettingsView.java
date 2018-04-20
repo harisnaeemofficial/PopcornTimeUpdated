@@ -31,7 +31,7 @@ public interface ISettingsView {
 
     void onSubtitlesFontColor(@NonNull String subtitlesFontColor);
 
-    void onDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn, @NonNull Boolean enabled);
+    void onKeepCPUawake(@NonNull Boolean keepCpuAwake);
 
     void onDownloadsWifiOnly(@NonNull Boolean downloadsWifiOnly);
 

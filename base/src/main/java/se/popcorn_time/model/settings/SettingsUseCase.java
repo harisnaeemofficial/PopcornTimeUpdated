@@ -17,7 +17,7 @@ public final class SettingsUseCase implements ISettingsUseCase {
     private final Subject<String> subtitlesLanguageSubject = PublishSubject.create();
     private final Subject<Float> subtitlesFontSizeSubject = PublishSubject.create();
     private final Subject<String> subtitlesFontColorSubject = PublishSubject.create();
-    private final Subject<Boolean> downloadsCheckVpnSubject = PublishSubject.create();
+    private final Subject<Boolean> keepCpuAwakeSubject = PublishSubject.create();
     private final Subject<Boolean> downloadsWifiOnlySubject = PublishSubject.create();
     private final Subject<Integer> downloadsConnectionsLimitSubject = PublishSubject.create();
     private final Subject<Integer> downloadsDownloadSpeedSubject = PublishSubject.create();
@@ -43,7 +43,7 @@ public final class SettingsUseCase implements ISettingsUseCase {
     private String subtitlesLanguage;
     private Float subtitlesFontSize;
     private String subtitlesFontColor;
-    private Boolean downloadsCheckVpn;
+    private Boolean keepCpuAwake;
     private Boolean downloadsWifiOnly;
     private Integer downloadsConnectionsLimit;
     private Integer downloadsDownloadSpeed;
@@ -79,7 +79,7 @@ public final class SettingsUseCase implements ISettingsUseCase {
         this.subtitlesLanguage = repository.getSubtitlesLanguage();
         this.subtitlesFontSize = repository.getSubtitlesFontSize();
         this.subtitlesFontColor = repository.getSubtitlesFontColor();
-        this.downloadsCheckVpn = repository.isDownloadsCheckVpn();
+        this.keepCpuAwake = repository.isKeepCpuAwake();
         this.downloadsWifiOnly = repository.isDownloadsWifiOnly();
         this.downloadsConnectionsLimit = repository.getDownloadsConnectionsLimit();
         this.downloadsDownloadSpeed = repository.getDownloadsDownloadSpeed();
@@ -240,21 +240,21 @@ public final class SettingsUseCase implements ISettingsUseCase {
 
     @Nullable
     @Override
-    public Boolean isDownloadsCheckVpn() {
-        return downloadsCheckVpn;
+    public Boolean isKeepCpuAwakeEnabled() {
+        return keepCpuAwake;
     }
 
     @Override
-    public void setDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn) {
-        this.downloadsCheckVpn = downloadsCheckVpn;
-        repository.setDownloadsCheckVpn(downloadsCheckVpn);
-        downloadsCheckVpnSubject.onNext(downloadsCheckVpn);
+    public void setKeepCpuAwake(@NonNull Boolean keepCpuAwake) {
+        this.keepCpuAwake = keepCpuAwake;
+        repository.setKeepCpuAwake(keepCpuAwake);
+        keepCpuAwakeSubject.onNext(keepCpuAwake);
     }
 
     @NonNull
     @Override
-    public Observable<Boolean> getDownloadsCheckVpnObservable() {
-        return downloadsCheckVpnSubject;
+    public Observable<Boolean> getKeepCpuAwakeObservable() {
+        return keepCpuAwakeSubject;
     }
 
     @NonNull

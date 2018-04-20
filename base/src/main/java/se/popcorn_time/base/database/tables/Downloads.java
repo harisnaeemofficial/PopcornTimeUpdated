@@ -37,7 +37,7 @@ public final class Downloads extends Table {
 
     public static final Uri CONTENT_URI = getContentUri(NAME);
 
-    private static final String FORMAT_TORRENT_HASH_SELECTION = Downloads._TORRENT_HASH + "=\"%s\" COLLATE NOCASE";
+    public static final String FORMAT_TORRENT_HASH_SELECTION = Downloads._TORRENT_HASH + "=\"%s\" COLLATE NOCASE";
     private static final String FORMAT_VIDEO_DOWNLOAD_SELECTION = FORMAT_TORRENT_HASH_SELECTION + " OR ( " + Downloads._FILE_NAME + "=\"%s\" AND " + Downloads._SIZE + "=%d )";
     private static final String FORMAT_TV_SHOW_DOWNLOAD_SELECTION = "( " + FORMAT_VIDEO_DOWNLOAD_SELECTION + " ) AND " + Downloads._SEASON + "=%d AND " + Downloads._EPISODE + "=%d";
 

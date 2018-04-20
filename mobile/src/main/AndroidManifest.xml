@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="se.popcorn_time.mobile"
     android:installLocation="auto">
@@ -6,15 +7,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
 
     <uses-feature
         android:name="android.hardware.wifi"
         android:required="true" />
 
     <application
-        android:name="se.popcorn_time.mobile.PopcornApplication"
+        android:name=".PopcornApplication"
         android:allowBackup="true"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
@@ -22,65 +24,65 @@
         android:largeHeap="true"
         android:logo="@mipmap/ic_launcher"
         android:theme="@style/Theme.Popcorn">
-
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
-
         <meta-data
             android:name="com.samsung.android.icon_container.has_icon_container"
             android:value="true" />
-
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notify_mascot" />
 
         <activity
-            android:name="se.popcorn_time.mobile.ui.MainActivity"
+            android:name=".ui.MainActivity"
             android:configChanges="orientation|screenSize|locale"
             android:theme="@style/Theme.Popcorn.Main"
-            android:windowSoftInputMode="adjustPan">
+            android:windowSoftInputMode="adjustPan"
+            android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
+                <action android:name="se.popcorn_time.mobile.ui.MainActivity" />
+
                 <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
-
         <activity
-            android:name="se.popcorn_time.mobile.ui.VLCPlayerActivity"
+            android:name=".ui.VLCPlayerActivity"
             android:configChanges="orientation|screenSize|locale"
-            android:launchMode="singleTop" />
-
+            android:launchMode="singleTask" />
         <activity
-            android:name="se.popcorn_time.mobile.ui.DetailsActivity"
+            android:name=".ui.DetailsActivity"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Popcorn.Details" />
-
         <activity
-            android:name="se.popcorn_time.mobile.ui.TrailerActivity"
+            android:name=".ui.TrailerActivity"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|screenLayout"
             android:theme="@style/Theme.Popcorn" />
-
         <activity
-            android:name="se.popcorn_time.mobile.ui.FavoritesActivity"
+            android:name=".ui.FavoritesActivity"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Popcorn" />
-
         <activity
-            android:name="se.popcorn_time.mobile.ui.DownloadsActivity"
-            android:theme="@style/Theme.Popcorn.Downloads" />
+            android:name=".ui.DownloadsActivity"
+            android:launchMode="singleTask"
+            android:theme="@style/Theme.Popcorn.Downloads">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT" />
 
+                <action android:name="se.popcorn_time.mobile.ui.DownloadsActivity" />
+            </intent-filter>
+        </activity>
         <activity
-            android:name="se.popcorn_time.mobile.ui.SettingsActivity"
+            android:name=".ui.SettingsActivity"
+            android:launchMode="singleTask"
             android:theme="@style/Theme.Popcorn.Settings" />
-
         <activity
-            android:name="se.popcorn_time.mobile.ui.FolderChooserActivity"
+            android:name=".ui.FolderChooserActivity"
+            android:launchMode="singleTask"
             android:configChanges="orientation|screenSize|locale" />
-
-        <activity
-            android:name="se.popcorn_time.mobile.ui.WebActivity"
-            android:configChanges="screenSize|locale"
-            android:screenOrientation="sensorPortrait"
-            android:windowSoftInputMode="adjustResize" />
 
         <service android:name="com.player.ConnectableNotificationService" />
         <service android:name="com.player.cast.WebServerService" />
@@ -91,17 +93,16 @@
             </intent-filter>
         </service>
 
-        <receiver
-            android:name=".InstallReferrerReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.android.vending.INSTALL_REFERRER" />
-            </intent-filter>
-        </receiver>
-
         <receiver android:name="se.popcorn_time.base.receiver.ConnectivityReceiver">
             <intent-filter>
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
+            </intent-filter>
+        </receiver>
+        <receiver android:name="se.popcorn_time.base.receiver.AppInstalled">
+            <intent-filter>
+                <action android:name="android.intent.action.PACKAGE_INSTALL" />
+                <action android:name="android.intent.action.PACKAGE_ADDED" />
+                <data android:scheme="package" />
             </intent-filter>
         </receiver>
 
@@ -110,5 +111,28 @@
             android:authorities="dp.ws.popcorntime"
             android:exported="false"
             android:label="@string/application_name" />
+
+        <provider
+            android:name=".GenericFileProvider"
+            android:authorities="${applicationId}.Provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths"/>
+        </provider>
+
+        <activity android:name=".ui.StartActivity"
+            android:launchMode="singleTask">
+
+        </activity>
+        <activity android:name=".UpdateGoogleActivity" android:launchMode="singleTask" android:theme="@style/Theme.AppCompat.NoActionBar.Translucent" android:noHistory="true">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <action android:name="se.popcorn_time.mobile.ui.UpdateGoogleActivity" />
+            </intent-filter>
+        </activity>
     </application>
+
 </manifest>

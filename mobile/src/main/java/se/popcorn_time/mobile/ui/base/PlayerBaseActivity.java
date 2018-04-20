@@ -6,16 +6,30 @@ import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.CheckedTextView;
 
 import com.player.CastMobilePlayerActivity;
 import com.player.MobilePlayerActivity;
 import com.player.dialog.ListItemEntity;
+import com.player.subtitles.SubtitlesException;
+import com.player.subtitles.SubtitlesUtils;
+import com.player.subtitles.format.SRTFormat;
+import com.player.subtitles.loader.UrlSubtitlesLoader;
 
+import org.videolan.libvlc.util.Extensions;
+
+import java.io.BufferedInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import io.reactivex.annotations.NonNull;
 import io.reactivex.functions.Consumer;
@@ -264,10 +278,10 @@ public abstract class PlayerBaseActivity extends CastMobilePlayerActivity {
 
     private void onVariantSubtitles(ChoiceProperty<Subtitles> property) {
         variantSubtitleItems.clear();
-        final Subtitles[] subtitles = property.getItems();
-        if (subtitles != null && subtitles.length > 0) {
-            for (int i = 0; i < subtitles.length; i++) {
-                ListItemEntity.addItemToList(variantSubtitleItems, new VariantSubtitleItem(subtitles[i].getUrl(), currentLangSubtitleItem.getName() + " #" + (i + 1)) {
+        File subsDir = new File(videoFile.getParent() + "/subs-"+currentLangSubtitleItem.getName());
+        if (subsDir.exists()) {
+            for (File subtitle : subsDir.listFiles()) {
+                ListItemEntity.addItemToList(variantSubtitleItems, new VariantSubtitleItem("file://" + subtitle.getAbsolutePath(), subtitle.getName().substring(0, subtitle.getName().lastIndexOf('.'))) {
 
                     @Override
                     public void onItemChosen() {
@@ -280,8 +294,59 @@ public abstract class PlayerBaseActivity extends CastMobilePlayerActivity {
                 variantSubtitleItems.get(property.getPosition()).onItemChosen();
             }
         } else {
-            ListItemEntity.addItemToList(variantSubtitleItems, new VariantSubtitleItem(null, "None"));
-            variantSubtitleItems.get(0).onItemChosen();
+            final Subtitles[] subtitles = property.getItems();
+            if (subtitles != null && subtitles.length > 0) {
+                for (int i = 0; i < subtitles.length; i++) {
+                    final int finalI = i;
+                    final boolean[] loading = {true};
+                    final String[] fileName = {currentLangSubtitleItem.getName() + " #" + (finalI + 1)};
+                    new Thread(() -> {
+                        String url = subtitles[finalI].getUrl();
+                        try {
+                            fileName[0] = new UrlSubtitlesLoader().load(new URL(url), new File(videoFile.getAbsolutePath()), currentLangSubtitleItem.getName());
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        } catch (SubtitlesException e) {
+                            e.printStackTrace();
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        loading[0] = false;
+                    }).start();
+                    while (loading[0]) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                    if (fileName[0].contains(currentLangSubtitleItem.getName() + " #")) {
+                        ListItemEntity.addItemToList(variantSubtitleItems, new VariantSubtitleItem(subtitles[finalI].getUrl(), fileName[0]) {
+
+                            @Override
+                            public void onItemChosen() {
+                                super.onItemChosen();
+                                loadSubtitles(getValue());
+                            }
+                        });
+                    } else {
+                        ListItemEntity.addItemToList(variantSubtitleItems, new VariantSubtitleItem("file://"+videoFile.getParent() + "/subs-"+currentLangSubtitleItem.getName()+"/" + fileName[0] + "." + SRTFormat.EXTENSION, fileName[0]) {
+
+                            @Override
+                            public void onItemChosen() {
+                                super.onItemChosen();
+                                loadSubtitles(getValue());
+                            }
+                        });
+                    }
+                }
+                if (property.getPosition() >= 0) {
+                    variantSubtitleItems.get(property.getPosition()).onItemChosen();
+                }
+            } else {
+                ListItemEntity.addItemToList(variantSubtitleItems, new VariantSubtitleItem(null, "None"));
+                variantSubtitleItems.get(0).onItemChosen();
+            }
         }
     }
 
@@ -291,6 +356,7 @@ public abstract class PlayerBaseActivity extends CastMobilePlayerActivity {
 
     public static void startForResult(Fragment fragment, Intent intent, int requestCode, Uri uri, PlayerInfo playerInfo) {
         intent.putExtra(EXTRA_PLAYER_INFO, playerInfo);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         MobilePlayerActivity.startForResult(fragment, intent, requestCode, uri);
     }
 

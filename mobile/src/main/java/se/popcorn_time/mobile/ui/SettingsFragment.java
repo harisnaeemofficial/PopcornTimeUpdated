@@ -22,6 +22,7 @@ import se.popcorn_time.base.storage.StorageUtil;
 import se.popcorn_time.base.subtitles.SubtitlesFontColor;
 import se.popcorn_time.base.subtitles.SubtitlesFontSize;
 import se.popcorn_time.base.subtitles.SubtitlesLanguage;
+import se.popcorn_time.base.utils.Logger;
 import se.popcorn_time.mobile.BuildConfig;
 import se.popcorn_time.mobile.Language;
 import se.popcorn_time.mobile.PlayerHardwareAcceleration;
@@ -46,7 +47,7 @@ public final class SettingsFragment extends PreferenceFragmentCompat
     private static final String KEY_SUBTITLES_LANGUAGE = "subtitles_language";
     private static final String KEY_SUBTITLES_FONT_SIZE = "subtitles_font_size";
     private static final String KEY_SUBTITLES_FONT_COLOR = "subtitles_font_color";
-    private static final String KEY_DOWNLOADS_CHECK_VPN = "downloads_check_vpn";
+    private static final String KEY_KEEP_CPU_AWAKE = "keep_cpu_awake";
     private static final String KEY_DOWNLOADS_WIFI_ONLY = "downloads_wifi_only";
     private static final String KEY_DOWNLOADS_CONNECTIONS_LIMIT = "downloads_connections_limit";
     private static final String KEY_DOWNLOADS_DOWNLOAD_SPEED = "downloads_download_speed";
@@ -63,7 +64,7 @@ public final class SettingsFragment extends PreferenceFragmentCompat
     private ListPreference subtitlesLanguagePreference;
     private ListPreference subtitlesFontSizePreference;
     private ListPreference subtitlesFontColorPreference;
-    private CheckBoxPreference downloadsCheckVpnPreference;
+    private CheckBoxPreference keepCPUawake;
     private CheckBoxPreference downloadsWifiOnlyPreference;
     private NumberPickerPreference downloadsConnectionsLimitPreference;
     private ListPreference downloadsDownloadSpeedPreference;
@@ -91,8 +92,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat
         subtitlesFontSizePreference.setOnPreferenceChangeListener(SettingsFragment.this);
         subtitlesFontColorPreference = (ListPreference) findPreference(KEY_SUBTITLES_FONT_COLOR);
         subtitlesFontColorPreference.setOnPreferenceChangeListener(SettingsFragment.this);
-        downloadsCheckVpnPreference = (CheckBoxPreference) findPreference(KEY_DOWNLOADS_CHECK_VPN);
-        downloadsCheckVpnPreference.setOnPreferenceChangeListener(SettingsFragment.this);
+        keepCPUawake = (CheckBoxPreference) findPreference(KEY_KEEP_CPU_AWAKE);
+        keepCPUawake.setOnPreferenceChangeListener(SettingsFragment.this);
         downloadsWifiOnlyPreference = (CheckBoxPreference) findPreference(KEY_DOWNLOADS_WIFI_ONLY);
         downloadsWifiOnlyPreference.setOnPreferenceChangeListener(SettingsFragment.this);
         downloadsConnectionsLimitPreference = (NumberPickerPreference) findPreference(KEY_DOWNLOADS_CONNECTIONS_LIMIT);
@@ -116,9 +117,6 @@ public final class SettingsFragment extends PreferenceFragmentCompat
                 String.format(Locale.ENGLISH, "%s.%d", BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
         );
 
-        setVisibility((PreferenceCategory) findPreference("category_player"), PopcornApplication.isFullVersion());
-        setVisibility((PreferenceCategory) findPreference("category_subtitles"), PopcornApplication.isFullVersion());
-        setVisibility((PreferenceCategory) findPreference("category_downloads"), PopcornApplication.isFullVersion());
     }
 
     @Override
@@ -277,9 +275,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat
     }
 
     @Override
-    public void onDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn, @NonNull Boolean enabled) {
-        downloadsCheckVpnPreference.setChecked(downloadsCheckVpn);
-        downloadsCheckVpnPreference.setVisible(PopcornApplication.isFullVersion() && enabled);
+    public void onKeepCPUawake(@NonNull Boolean keepCpuAwake) {
+        keepCPUawake.setChecked(keepCpuAwake);
     }
 
     @Override
@@ -397,8 +394,8 @@ public final class SettingsFragment extends PreferenceFragmentCompat
             case KEY_SUBTITLES_FONT_COLOR:
                 presenter.setSubtitlesFontColor((String) newValue);
                 return true;
-            case KEY_DOWNLOADS_CHECK_VPN:
-                presenter.setDownloadsCheckVpn((Boolean) newValue);
+            case KEY_KEEP_CPU_AWAKE:
+                presenter.setKeepCpuAwake((Boolean) newValue);
                 return true;
             case KEY_DOWNLOADS_WIFI_ONLY:
                 presenter.setDownloadsWifiOnly((Boolean) newValue);

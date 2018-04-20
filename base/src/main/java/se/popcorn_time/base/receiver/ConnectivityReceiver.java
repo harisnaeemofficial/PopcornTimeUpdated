@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 
 import se.popcorn_time.base.IPopcornApplication;
 import se.popcorn_time.base.torrent.TorrentService;
@@ -28,7 +29,7 @@ public class ConnectivityReceiver extends BroadcastReceiver {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
         boolean isConnected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
-        if (isConnected) {
+        if (isConnected && !TorrentService.serviceStopped) {
             if (((IPopcornApplication) context.getApplicationContext()).getSettingsUseCase().isDownloadsWifiOnly()) {
                 if (ConnectivityManager.TYPE_WIFI == activeNetwork.getType()) {
                     resumeTorrentService(context);
@@ -47,12 +48,20 @@ public class ConnectivityReceiver extends BroadcastReceiver {
     private static void resumeTorrentService(Context context) {
         Intent intent = TorrentService.createIntent(context);
         intent.setAction(TorrentService.ACTION_RESUME);
-        context.startService(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent);
+        } else {
+            context.startService(intent);
+        }
     }
 
     private static void pauseTorrentService(Context context) {
         Intent intent = TorrentService.createIntent(context);
         intent.setAction(TorrentService.ACTION_PAUSE);
-        context.startService(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent);
+        } else {
+            context.startService(intent);
+        }
     }
 }

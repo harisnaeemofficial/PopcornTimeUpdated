@@ -12,6 +12,7 @@ import se.popcorn_time.base.prefs.PopcornPrefs;
 import se.popcorn_time.base.prefs.Prefs;
 import se.popcorn_time.base.receiver.ConnectivityReceiver;
 import se.popcorn_time.base.torrent.AddToDownloadsThread;
+import se.popcorn_time.base.torrent.TorrentService;
 import se.popcorn_time.base.torrent.TorrentState;
 
 public class MainClient extends BaseClient {
@@ -48,7 +49,6 @@ public class MainClient extends BaseClient {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdownNow();
         }
-        System.exit(0);
     }
 
     public void removeLastOnExit() {

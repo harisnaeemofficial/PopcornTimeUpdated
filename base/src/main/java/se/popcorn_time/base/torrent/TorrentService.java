@@ -1,11 +1,28 @@
 package se.popcorn_time.base.torrent;
 
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.pm.PackageInstaller;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
+import android.graphics.Color;
 import android.os.Binder;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.os.PowerManager;
+import android.support.annotation.DrawableRes;
+import android.support.v4.app.NotificationCompat;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.frostwire.jlibtorrent.Vectors;
 import com.frostwire.jlibtorrent.swig.add_torrent_params;
@@ -28,27 +45,46 @@ import com.frostwire.jlibtorrent.swig.session_settings;
 import com.frostwire.jlibtorrent.swig.storage_mode_t;
 import com.frostwire.jlibtorrent.swig.string_int_pair;
 import com.frostwire.jlibtorrent.swig.time_duration;
+import com.frostwire.jlibtorrent.swig.torrent_added_alert;
+import com.frostwire.jlibtorrent.swig.torrent_alert;
 import com.frostwire.jlibtorrent.swig.torrent_finished_alert;
 import com.frostwire.jlibtorrent.swig.torrent_handle;
 import com.frostwire.jlibtorrent.swig.torrent_info;
 import com.frostwire.jlibtorrent.swig.torrent_paused_alert;
+import com.frostwire.jlibtorrent.swig.torrent_removed_alert;
+import com.frostwire.jlibtorrent.swig.torrent_resumed_alert;
 import com.frostwire.jlibtorrent.swig.torrent_status;
 
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.ResourceBundle;
 
 import se.popcorn_time.base.IPopcornApplication;
+import se.popcorn_time.base.R;
 import se.popcorn_time.base.database.tables.Downloads;
+import se.popcorn_time.base.database.tables.History;
+import se.popcorn_time.base.model.DownloadInfo;
 import se.popcorn_time.base.model.WatchInfo;
+import se.popcorn_time.base.model.video.Anime;
+import se.popcorn_time.base.model.video.Cinema;
+import se.popcorn_time.base.prefs.PopcornPrefs;
+import se.popcorn_time.base.prefs.Prefs;
+import se.popcorn_time.base.receiver.AppInstalled;
+import se.popcorn_time.base.receiver.ConnectivityReceiver;
 import se.popcorn_time.base.storage.StorageUtil;
 import se.popcorn_time.base.torrent.watch.WatchListener;
 import se.popcorn_time.base.torrent.watch.WatchTask;
 import se.popcorn_time.base.utils.Logger;
+
+import static com.player.MobilePlayerActivity.TAG;
 
 public final class TorrentService extends Service {
 
@@ -68,8 +104,12 @@ public final class TorrentService extends Service {
 
     private session mSession;
     private HashMap<String, torrent_handle> torrents = new HashMap<>();
+    private List<Integer> notificationIDs = new ArrayList<>();
 
-    private boolean running;
+    private static boolean running;
+    private PowerManager.WakeLock wakeLock;
+    private BroadcastReceiver mStatusReceiver;
+    private NotificationManager mNotifyManager;
 
     public class TorrentBinder extends Binder {
         public TorrentService getService() {
@@ -89,14 +129,135 @@ public final class TorrentService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        final Intent exitIntent = new Intent("se.popcorn_time.base.receive.TorrentService");
+        exitIntent.putExtra("action", "stop");
+
+        final String channelId1 = "popcorn_service";
+
+        final NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(TorrentService.this, channelId1);
+        final Intent onClickNotify = new Intent("se.popcorn_time.mobile.ui.MainActivity");
+        onClickNotify.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        mBuilder.setContentTitle("Popcorn is running!")
+                .setPriority(NotificationCompat.PRIORITY_MIN)
+                .setSmallIcon(android.R.drawable.sym_def_app_icon)
+                .setContentIntent(PendingIntent.getActivity(TorrentService.this, 2135, onClickNotify, 0))
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "STOP",
+                        PendingIntent.getBroadcast(TorrentService.this, 2843, exitIntent, 0));
+        startForeground(2135, mBuilder.build());
+
+        serviceStopped = false;
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
+            if (!isPackageInstalled("com.google.gms.googleplayservices", getPackageManager())) {
+                mAppReceiver = new AppInstalled();
+            }
+
+            mConnectivityReceiver = new ConnectivityReceiver();
+        }
+
+        final boolean[] wasPaused = {false};
+
+        mStatusReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                Bundle extras = intent.getExtras();
+                if (extras != null) {
+                    String action = extras.getString("action", null);
+
+                    Log.d("action", action);
+                    switch (action) {
+                        case "stop":
+                            setKeepCpuAwake(false);
+                            //running = false;
+                            wasPaused[0] = mSession.is_paused();
+                            pauseSession();
+                            if (mNotifyManager != null) {
+                                for (int id : notificationIDs) {
+                                    mNotifyManager.cancel(id);
+                                }
+                                notificationIDs.clear();
+                            }
+
+                            if (((IPopcornApplication) getApplication()).getSettingsUseCase().isDownloadsClearCacheFolder()) {
+                                String last = Prefs.getPopcornPrefs().get(PopcornPrefs.LAST_TORRENT, "");
+                                if (!last.equals("")) {
+                                    removeTorrent(last);
+                                    Prefs.getPopcornPrefs().put(PopcornPrefs.LAST_TORRENT, "");
+                                }
+                                StorageUtil.clearCacheDir();
+                            }
+
+                            final Intent startIntent = new Intent("se.popcorn_time.base.receive.TorrentService");
+                            startIntent.putExtra("action", "start");
+                            NotificationCompat.Builder mBuilder1 = new NotificationCompat.Builder(TorrentService.this, channelId1);
+                            mBuilder1.setContentTitle("Click to restart!")
+                                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                                    .setSmallIcon(R.drawable.ic_notify_mascot)
+                                    .setContentIntent(PendingIntent.getBroadcast(TorrentService.this, 2643, startIntent, 0))
+                                    .addAction(android.R.drawable.ic_menu_close_clear_cancel, "START",
+                                            PendingIntent.getBroadcast(TorrentService.this, 2643, startIntent, 0));
+                            serviceStopped = true;
+                            mNotifyManager.notify(2135, mBuilder1.build());
+                            break;
+                        case "start":
+                            setKeepCpuAwake(((IPopcornApplication) getApplication()).getSettingsUseCase().isKeepCpuAwakeEnabled());
+                            //running = true;
+                            if (!wasPaused[0]) {
+                                resumeSession();
+                            }
+                            serviceStopped = false;
+                            mNotifyManager.notify(2135, mBuilder.build());
+                            break;
+                    }
+                }
+            }
+        };
+
+        IntentFilter filter2 = new IntentFilter();
+        filter2.addAction("se.popcorn_time.base.receive.TorrentService");
+        registerReceiver(mStatusReceiver, filter2);
+
+        if (mAppReceiver != null) {
+            IntentFilter filter = new IntentFilter();
+            filter.addAction("android.intent.action.PACKAGE_ADDED");
+            filter.addAction("android.intent.action.PACKAGE_INSTALL");
+            filter.addDataScheme("package");
+            registerReceiver(mAppReceiver, filter);
+            Logger.debug("registered mAppReceiver");
+        }
+
+        if (mConnectivityReceiver != null) {
+            IntentFilter filter1 = new IntentFilter();
+            filter1.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+            registerReceiver(mConnectivityReceiver, filter1);
+        }
+
         running = true;
     }
+
+    public static boolean serviceStopped;
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        setKeepCpuAwake(false);
+        stopForeground(true);
         running = false;
         mSession.abort();
+        if (mAppReceiver != null) {
+            unregisterReceiver(mAppReceiver);
+        }
+        if (mConnectivityReceiver != null) {
+            unregisterReceiver(mConnectivityReceiver);
+        }
+        NotificationManager mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (mNotifyManager != null) {
+            for (int id : notificationIDs) {
+                mNotifyManager.cancel(id);
+            }
+            notificationIDs.clear();
+        }
         Logger.debug("TorrentService: stopped");
     }
 
@@ -125,6 +286,7 @@ public final class TorrentService extends Service {
 
         return START_STICKY;
     }
+
 
     private void onStartTorrent() {
         if (mSession != null) {
@@ -159,16 +321,18 @@ public final class TorrentService extends Service {
         alertsLoop();
 
         mSession.resume();
+        setKeepCpuAwake(((IPopcornApplication) getApplication()).getSettingsUseCase().isKeepCpuAwakeEnabled());
         Logger.debug("TorrentService: Started");
     }
 
     private void alertsLoop() {
         Runnable r = new Runnable() {
+
             @Override
             public void run() {
                 alert_ptr_deque deque = new alert_ptr_deque();
 
-                time_duration max_wait = libtorrent.milliseconds(500);
+                time_duration max_wait = libtorrent.milliseconds(1500);
 
                 while (running) {
                     alert ptr = mSession.wait_for_alert(max_wait);
@@ -185,6 +349,18 @@ public final class TorrentService extends Service {
                                     || torrent_paused_alert.alert_type == type
                                     || torrent_finished_alert.alert_type == type) {
                                 alert.cast_to_torrent_alert(swigAlert).getHandle().save_resume_data();
+
+                                if (piece_finished_alert.alert_type == type) {
+                                    pieceFinishedCallback(swigAlert);
+                                }
+                                if (torrent_paused_alert.alert_type == type) {
+                                    torrentPausedCallback(swigAlert);
+                                }
+                                if (torrent_finished_alert.alert_type == type) {
+                                    torrentFinishedCallback(swigAlert);
+                                }
+                            } else if (torrent_resumed_alert.alert_type == type) {
+                                torrentResumedCallback(swigAlert);
                             }
                         }
                         deque.clear();
@@ -197,6 +373,181 @@ public final class TorrentService extends Service {
         t.setDaemon(true);
         t.start();
     }
+
+    /* Notification
+     * Show
+     * */
+
+    private void torrentRemovedCallback(String hex) {
+        torrentStatusCallbackRawHex(hex, "Download task removed!", android.R.drawable.ic_delete);
+    }
+
+    private void torrentResumedCallback(alert swigAlert) {
+        torrentStatusCallback(swigAlert, "Download resumed!", android.R.drawable.ic_media_play);
+    }
+
+    private void torrentFinishedCallback(alert swigAlert) {
+        torrentStatusCallback(swigAlert, "Download finished!", android.R.drawable.stat_sys_download_done);
+    }
+
+    private void torrentPausedCallback(alert swigAlert) {
+        torrentStatusCallback(swigAlert, "Download paused!", android.R.drawable.ic_media_pause);
+    }
+
+    public void pieceFinishedCallback(alert swigAlert) {
+        Cursor cursor = Downloads.query(TorrentService.this, null, String.format(Locale.ENGLISH, Downloads.FORMAT_TORRENT_HASH_SELECTION, alert.cast_to_torrent_alert(swigAlert).getHandle().info_hash().to_hex()), null, Downloads._ID + " DESC");
+        if (cursor != null) {
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                do {
+                    final DownloadInfo info = new DownloadInfo();
+                    Downloads.populate(info, cursor);
+
+                    int fileSizeMB = (int) (info.size / StorageUtil.SIZE_MB);
+                    String torrentFile = TorrentUtil.getAvailableTorrentFile(TorrentService.this, info.torrentFilePath, info.torrentUrl, info.torrentMagnet);
+                    final int progressSizeMB = TorrentService.this.getDownloadSizeMb(torrentFile);
+                    if (progressSizeMB > fileSizeMB) {
+                        fileSizeMB = progressSizeMB;
+                    }
+                    final String downloadSpeed = getTorrentSpeed(torrentFile);
+                    final int percentage = (int) (((double) progressSizeMB / (double) fileSizeMB) * 100);
+                    final int finalFileSizeMB = fileSizeMB;
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            String channelId = "popcorn_download_info";
+
+                            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(TorrentService.this, channelId);
+                            Intent onClickNotify = new Intent("se.popcorn_time.mobile.ui.MainActivity");
+                            onClickNotify.putExtra("action", "open_dnl");
+                            onClickNotify.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                            mBuilder.setContentTitle(info.title.length() > 16 ? info.title.substring(0, 16)+"..." : info.title)
+                                    .setContentText("Downloaded " + percentage + "%" + " with " + downloadSpeed)
+                                    .setProgress(finalFileSizeMB, progressSizeMB, false)
+                                    .setPriority(NotificationCompat.PRIORITY_MIN)
+                                    //.setOngoing(true)
+                                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                                    .setContentIntent(PendingIntent.getActivity(TorrentService.this, (int) info.id, onClickNotify, 0));
+                            if (info.type.equals(Cinema.TYPE_TV_SHOWS) || info.type.equals(Anime.TYPE_TV_SHOWS)) {
+                                String title = info.title + ", " + "S" + info.season + ", EP" + info.episode;
+                                mBuilder.setContentTitle(title.length() > 16 ? title.substring(0, 16)+"..." : title);
+                            }
+                            if (mNotifyManager != null) {
+                                mNotifyManager.notify((int) info.id, mBuilder.build());
+                                notificationIDs.add((int) info.id);
+                            }
+                        }
+                    });
+                } while (cursor.moveToNext());
+            }
+        }
+    }
+
+    private void torrentStatusCallback(alert swigAlert, final String message, @DrawableRes final int smallIcon) {
+        torrentStatusCallbackRawHex(alert.cast_to_torrent_alert(swigAlert).getHandle().info_hash().to_hex(), message, smallIcon);
+    }
+
+    private void torrentStatusCallbackRawHex(String hex, final String message, final int smallIcon) {
+        Cursor cursor = Downloads.query(TorrentService.this, null, String.format(Locale.ENGLISH, Downloads.FORMAT_TORRENT_HASH_SELECTION, hex), null, Downloads._ID + " DESC");
+        if (cursor != null) {
+            if (cursor.getCount() > 0) {
+                cursor.moveToFirst();
+                do {
+                    final DownloadInfo info = new DownloadInfo();
+                    Downloads.populate(info, cursor);
+
+                    new Handler(Looper.getMainLooper()).post(new Runnable() {
+                        @Override
+                        public void run() {
+
+                            String channelId = "popcorn_state_info";
+
+                            NotificationCompat.Builder mBuilder = new NotificationCompat.Builder(TorrentService.this, channelId);
+                            Intent onClickNotify = new Intent("se.popcorn_time.mobile.ui.MainActivity");
+                            onClickNotify.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            mBuilder.setContentTitle(message)
+                                    .setContentText(info.title)
+                                    .setPriority(NotificationCompat.PRIORITY_HIGH)
+                                    .setSmallIcon(smallIcon)
+                                    .setContentIntent(PendingIntent.getActivity(TorrentService.this, (int) info.id, onClickNotify, 0));
+                            if (info.type.equals(Cinema.TYPE_TV_SHOWS) || info.type.equals(Anime.TYPE_TV_SHOWS)) {
+                                String seasonText = TorrentService.this.getString(R.string.season);
+                                String episodeText = TorrentService.this.getString(R.string.episode);
+                                mBuilder.setContentText(info.title + ", " + seasonText + " " + info.season + ", " + episodeText + " " + info.episode);
+                            }
+                            if (mNotifyManager != null) {
+                                mNotifyManager.notify((int) info.id, mBuilder.build());
+                                notificationIDs.add((int) info.id);
+                            }
+                        }
+                    });
+                } while (cursor.moveToNext());
+            }
+        }
+    }
+
+
+    public void setKeepCpuAwake(boolean enable)
+    {
+        Logger.debug("setKeepCpuAwake: "+enable);
+        if (enable) {
+            if (wakeLock == null) {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null) {
+                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
+                }
+            }
+
+            if (!wakeLock.isHeld()) {
+                wakeLock.acquire();
+            }
+
+        } else {
+            if (wakeLock == null) {
+                return;
+            }
+
+            if (wakeLock.isHeld()) {
+                wakeLock.release();
+            }
+        }
+    }
+
+    /*
+    * Broadcast
+    * */
+
+    private BroadcastReceiver mAppReceiver;
+    private BroadcastReceiver mConnectivityReceiver;
+
+    public static Date parseDate(String date) {
+        SimpleDateFormat curFormater = new SimpleDateFormat("dd-MM-yyyy HH");
+        Date dateObj = null;
+        try {
+            dateObj = curFormater.parse(date);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return dateObj;
+    }
+    public static String parseString(Date date) {
+        SimpleDateFormat curFormater = new SimpleDateFormat("dd-MM-yyyy HH");
+        return curFormater.format(date);
+    }
+
+
+    public static boolean isPackageInstalled(String packagename, PackageManager packageManager) {
+        try {
+            packageManager.getPackageInfo(packagename, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
+    }
+
+
 
     /*
     * Session
@@ -355,6 +706,7 @@ public final class TorrentService extends Service {
             } catch (UnknownError ue) {
                 Logger.error("TorrentService<removeTorrent>: Error", ue);
             }
+            torrentRemovedCallback(torrents.get(key).info_hash().to_hex());
             torrents.remove(key);
             Logger.debug("Torrent removed<" + torrents.size() + ">: " + key);
         }
@@ -614,11 +966,17 @@ public final class TorrentService extends Service {
     * */
 
     public static void start(Context context) {
-        context.startService(createIntent(context));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(createIntent(context));
+        } else {
+            context.startService(createIntent(context));
+        }
     }
 
     public static void stop(Context context) {
-        context.stopService(createIntent(context));
+        Intent intent = new Intent("se.popcorn_time.base.receive.TorrentService");
+        intent.putExtra("action", "stop");
+        context.sendBroadcast(intent);
     }
 
     public static Intent createIntent(Context context) {

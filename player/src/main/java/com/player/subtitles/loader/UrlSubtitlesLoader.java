@@ -16,7 +16,9 @@ import java.util.zip.ZipInputStream;
 public final class UrlSubtitlesLoader extends SubtitlesLoader<URL> {
 
     @Override
-    public void load(@NonNull URL url, @NonNull File saveFile) throws IOException, SubtitlesException, InterruptedException {
+    public String load(@NonNull URL url, @NonNull File saveFile, String langName) throws IOException, SubtitlesException, InterruptedException {
+        String fileName = "";
+
         URLConnection connection = url.openConnection();
         connection.setConnectTimeout(5000);
         connection.connect();
@@ -31,8 +33,15 @@ public final class UrlSubtitlesLoader extends SubtitlesLoader<URL> {
         while ((zipEntry = zipInputStream.getNextEntry()) != null) {
             int index = zipEntry.getName().lastIndexOf('.') + 1;
             String ext = zipEntry.getName().substring(index).toLowerCase();
+            fileName = zipEntry.getName().substring(0, index - 1);
             if (SRTFormat.EXTENSION.equals(ext)) {
-                save(zipInputStream, saveFile, new SRTFormat());
+                if (langName != null) {
+                    new File(saveFile.getParent() + "/subs-"+langName).mkdir();
+                    File path = new File(saveFile.getParent() + "/subs-"+langName+"/" + fileName+"."+SRTFormat.EXTENSION);
+                    save(zipInputStream, path, new SRTFormat());
+                } else {
+                    save(zipInputStream, saveFile, new SRTFormat());
+                }
                 isSaved = true;
                 break;
             }
@@ -43,5 +52,6 @@ public final class UrlSubtitlesLoader extends SubtitlesLoader<URL> {
         if (!isSaved) {
             throw new SubtitlesException("Subtitles not loaded from: " + url);
         }
+        return fileName;
     }
 }

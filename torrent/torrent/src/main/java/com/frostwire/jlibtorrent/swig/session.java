@@ -9,7 +9,7 @@
 package com.frostwire.jlibtorrent.swig;
 
 public class session {
-  private long swigCPtr;
+  public long swigCPtr;
   protected boolean swigCMemOwn;
 
   protected session(long cPtr, boolean cMemoryOwn) {

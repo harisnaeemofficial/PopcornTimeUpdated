@@ -6,7 +6,11 @@ import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,7 +23,9 @@ import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.drawable.DrawableCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.graphics.Palette;
 import android.support.v7.widget.AppCompatButton;
+import android.support.v7.widget.AppCompatImageView;
 import android.support.v7.widget.Toolbar;
 import android.text.Html;
 import android.text.SpannableString;
@@ -30,6 +36,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterViewFlipper;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.RatingBar;
 import android.widget.TextView;
@@ -40,6 +47,7 @@ import com.player.dialog.FileChooserDialog;
 import com.player.dialog.ListItemEntity;
 import com.player.subtitles.SubtitlesRenderer;
 import com.player.subtitles.SubtitlesUtils;
+import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 
 import java.io.File;
@@ -120,6 +128,7 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
     protected ItemSelectButton subtitlesBtn;
     protected ItemSelectButton dubbingBtn;
     protected ItemSelectButton torrentsBtn;
+    private FrameLayout posterParent;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -138,6 +147,7 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
         ((AppCompatActivity) getActivity()).setSupportActionBar((Toolbar) view.findViewById(R.id.toolbar));
         ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayShowTitleEnabled(false);
+        posterParent = view.findViewById(R.id.poster_parent);
         poster = (ImageView) view.findViewById(R.id.poster);
         backdrops = (AdapterViewFlipper) view.findViewById(R.id.backdrops);
         ratingbar = (RatingBar) view.findViewById(R.id.ratingbar);
@@ -238,7 +248,23 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
     @Override
     public void onVideoInfo(@NonNull T videoInfo) {
         if (Configuration.ORIENTATION_PORTRAIT == getResources().getConfiguration().orientation && poster != null) {
-            Picasso.with(getContext()).load(videoInfo.getPosterBig()).placeholder(android.R.color.black).into(poster);
+            Picasso.with(getContext()).load(videoInfo.getPosterBig()).placeholder(android.R.color.black).into(poster, new Callback() {
+                @Override
+                public void onSuccess() {
+                    Drawable foreDrawable;
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                        foreDrawable = new RippleDrawable(ColorStateList.valueOf(VibrantUtils.getAccentColor()), null, null);
+                    } else {
+                        foreDrawable = ContextCompat.getDrawable(getContext(), R.drawable.ripple_image);
+                    }
+                    posterParent.setForeground(foreDrawable);
+                }
+
+                @Override
+                public void onError() {
+
+                }
+            });
         }
         if (backdrops != null) {
             final String[] urls = videoInfo.getBackdrops() != null ? videoInfo.getBackdrops() : new String[]{videoInfo.getPosterBig()};
@@ -369,9 +395,9 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
                 } else {
                     showDownloadBtn(t);
                 }
-                playBtn.setVisibility(PopcornApplication.isFullVersion() ? View.VISIBLE : View.GONE);
-                downloadBtn.setVisibility(PopcornApplication.isFullVersion() ? View.VISIBLE : View.GONE);
-                additionalControls.setVisibility(PopcornApplication.isFullVersion() ? View.VISIBLE : View.INVISIBLE);
+                playBtn.setVisibility(View.VISIBLE);
+                downloadBtn.setVisibility(View.VISIBLE);
+                additionalControls.setVisibility(View.VISIBLE);
                 return;
             }
         }
@@ -584,7 +610,7 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
 
     private void addDownload(@NonNull Torrent torrent) {
         final DownloadInfo info = buildDownloadInfo(torrent);
-        String uuid = UUID.randomUUID().toString();
+        String uuid = info.title + "-" + UUID.randomUUID().toString();
         String directoryPath = StorageUtil.getDownloadsDirPath() + "/" + uuid;
         info.directory = new File(directoryPath);
         if (info.directory.exists()) {

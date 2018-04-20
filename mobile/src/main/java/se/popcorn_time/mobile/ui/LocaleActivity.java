@@ -3,21 +3,25 @@ package se.popcorn_time.mobile.ui;
 import android.content.Context;
 import android.content.ContextWrapper;
 import android.content.res.Configuration;
+import android.graphics.Color;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.LocaleList;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.view.WindowManager;
+
+import com.jude.swipbackhelper.SwipeBackHelper;
 
 import java.util.Locale;
 
-import me.imid.swipebacklayout.lib.app.SwipeBackActivity;
 import se.popcorn_time.base.utils.InterfaceUtil;
 import se.popcorn_time.mobile.PopcornApplication;
 import se.popcorn_time.mvp.IViewRouter;
 import se.popcorn_time.ui.locale.ILocaleView;
 
-public abstract class LocaleActivity extends SwipeBackActivity implements IViewRouter, ILocaleView {
+public abstract class LocaleActivity extends AppCompatActivity implements IViewRouter, ILocaleView {
 
     @Override
     protected void attachBaseContext(Context newBase) {
@@ -70,5 +74,27 @@ public abstract class LocaleActivity extends SwipeBackActivity implements IViewR
         if (!loc.equals(language)) {
             recreate();
         }
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            getWindow().setNavigationBarColor(getResources().getColor(android.R.color.black));
+        }
+        super.onCreate(savedInstanceState);
+        SwipeBackHelper.onCreate(this);
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        SwipeBackHelper.onPostCreate(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        SwipeBackHelper.onDestroy(this);
     }
 }

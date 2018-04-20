@@ -1,7 +1,9 @@
 package se.popcorn_time.mobile;
 
+import android.annotation.SuppressLint;
 import android.app.Application;
 import android.app.DownloadManager;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.ActivityNotFoundException;
@@ -10,8 +12,10 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -21,8 +25,6 @@ import android.support.v7.app.AppCompatDelegate;
 import android.text.TextUtils;
 import android.webkit.WebView;
 
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.gson.reflect.TypeToken;
 import com.jakewharton.picasso.OkHttp3Downloader;
 import com.squareup.picasso.Picasso;
@@ -117,11 +119,6 @@ public final class PopcornApplication extends Application implements IPopcornApp
         IUseCaseManager,
         IMessagingUseCase.NotificationObserver {
 
-    private static boolean fullVersion;
-
-    public static boolean isFullVersion() {
-        return fullVersion;
-    }
 
     public static final String ACTION_NOTIFICATION = "se.popcorn_time.mobile.ACTION_NOTIFICATION";
     public static final String EXTRA_ACTION = "action";
@@ -192,7 +189,9 @@ public final class PopcornApplication extends Application implements IPopcornApp
 
     private Disposable detailsDisposable;
     private Disposable subtitlesDisposable;
+    private NotificationManager mNotifyManager;
 
+    @SuppressLint("CheckResult")
     @Override
     public void onCreate() {
         super.onCreate();
@@ -216,8 +215,9 @@ public final class PopcornApplication extends Application implements IPopcornApp
             }
         }
 
+        createNotificationChannels();
+
         Prefs.init(getBaseContext());
-        fullVersion = Prefs.getPopcornPrefs().isFullVersion(BuildConfig.IS_APP_FULL);
 
         final SharedPreferences popcornPreferences = getSharedPreferences("PopcornPreferences", Context.MODE_PRIVATE);
 
@@ -443,6 +443,13 @@ public final class PopcornApplication extends Application implements IPopcornApp
                 baseClient.setMaximumDownloadSpeed(downloadsDownloadSpeed);
             }
         });
+        settingsUseCase.getKeepCpuAwakeObservable().subscribe(new Consumer<Boolean>() {
+
+            @Override
+            public void accept(Boolean keepCpuAwake) throws Exception {
+                baseClient.setKeepCpuAwake(keepCpuAwake);
+            }
+        });
         settingsUseCase.getDownloadsUploadSpeedObservable().subscribe(new Consumer<Integer>() {
 
             @Override
@@ -478,6 +485,12 @@ public final class PopcornApplication extends Application implements IPopcornApp
                                 @Override
                                 public void accept(@io.reactivex.annotations.NonNull VideoInfo videoInfo) throws Exception {
                                     detailsUseCase.getVideoInfoProperty().setValue(videoInfo);
+                                    new Handler().postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            Logger.debug(videoInfo.toString());
+                                        }
+                                    }, 5000);
                                 }
                             }, new Consumer<Throwable>() {
 
@@ -553,6 +566,97 @@ public final class PopcornApplication extends Application implements IPopcornApp
                 }
             }
         });
+    }
+
+    private void createNotificationChannels() {
+        mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final String channelId1 = "popcorn_service";
+            NotificationChannel notificationChannelRetr1 = mNotifyManager != null ? mNotifyManager.getNotificationChannel(channelId1) : null;
+            if (notificationChannelRetr1 == null) {
+                NotificationChannel notificationChannel;
+                CharSequence channelName = "Service running";
+                int importance = NotificationManager.IMPORTANCE_MIN;
+                notificationChannel = new NotificationChannel(channelId1, channelName, importance);
+                notificationChannel.enableLights(false);
+                notificationChannel.enableVibration(false);
+                if (mNotifyManager != null) {
+                    mNotifyManager.createNotificationChannel(notificationChannel);
+                }
+            }
+
+            String channelId = "popcorn_state_info";
+            NotificationChannel notificationChannelRetr = mNotifyManager != null ? mNotifyManager.getNotificationChannel(channelId) : null;
+            if (notificationChannelRetr == null) {
+                NotificationChannel notificationChannel;
+                CharSequence channelName = "Download Status Information";
+                int importance = NotificationManager.IMPORTANCE_HIGH;
+                notificationChannel = new NotificationChannel(channelId, channelName, importance);
+                notificationChannel.enableLights(true);
+                notificationChannel.setLightColor(Color.BLUE);
+                notificationChannel.enableVibration(true);
+                if (mNotifyManager != null) {
+                    mNotifyManager.createNotificationChannel(notificationChannel);
+                }
+            }
+
+            String channelId2 = "popcorn_download_info";
+            NotificationChannel notificationChannelRetr2 = mNotifyManager != null ? mNotifyManager.getNotificationChannel(channelId2) : null;
+            if (notificationChannelRetr2 == null) {
+                NotificationChannel notificationChannel;
+                CharSequence channelName = "Download Progress Information";
+                int importance = NotificationManager.IMPORTANCE_MIN;
+                notificationChannel = new NotificationChannel(channelId2, channelName, importance);
+                notificationChannel.enableLights(false);
+                notificationChannel.enableVibration(false);
+                if (mNotifyManager != null) {
+                    mNotifyManager.createNotificationChannel(notificationChannel);
+                }
+            }
+
+            String channelId4 = "popcorn_message";
+            NotificationChannel notificationChannelRetr4 = mNotifyManager != null ? mNotifyManager.getNotificationChannel(channelId4) : null;
+            if (notificationChannelRetr4 == null) {
+                NotificationChannel notificationChannel;
+                CharSequence channelName = "General Information";
+                int importance = NotificationManager.IMPORTANCE_DEFAULT;
+                notificationChannel = new NotificationChannel(channelId4, channelName, importance);
+                notificationChannel.enableLights(true);
+                notificationChannel.setLightColor(Color.BLUE);
+                if (mNotifyManager != null) {
+                    mNotifyManager.createNotificationChannel(notificationChannel);
+                }
+            }
+
+            String channelId5 = "popcorn_media_control";
+            NotificationChannel notificationChannelRetr5 = mNotifyManager != null ? mNotifyManager.getNotificationChannel(channelId5) : null;
+            if (notificationChannelRetr5 == null) {
+                NotificationChannel notificationChannel;
+                CharSequence channelName = "Media Playback";
+                int importance = NotificationManager.IMPORTANCE_HIGH;
+                notificationChannel = new NotificationChannel(channelId5, channelName, importance);
+                notificationChannel.enableLights(false);
+                notificationChannel.enableVibration(false);
+                if (mNotifyManager != null) {
+                    mNotifyManager.createNotificationChannel(notificationChannel);
+                }
+            }
+
+            String channelId3 = "popcorn_state_info";
+            NotificationChannel notificationChannelRetr3 = mNotifyManager != null ? mNotifyManager.getNotificationChannel(channelId3) : null;
+            if (notificationChannelRetr3 == null) {
+                NotificationChannel notificationChannel;
+                CharSequence channelName = "Download Status Information";
+                int importance = NotificationManager.IMPORTANCE_HIGH;
+                notificationChannel = new NotificationChannel(channelId3, channelName, importance);
+                notificationChannel.enableLights(true);
+                notificationChannel.setLightColor(Color.BLUE);
+                notificationChannel.enableVibration(true);
+                if (mNotifyManager != null) {
+                    mNotifyManager.createNotificationChannel(notificationChannel);
+                }
+            }
+        }
     }
 
     @Override
@@ -637,7 +741,7 @@ public final class PopcornApplication extends Application implements IPopcornApp
 
     @Override
     public void onShowMessagingNotification(@NonNull IMessagingNotificationData data) {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(PopcornApplication.this);
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(PopcornApplication.this, "popcorn_message");
         builder.setSmallIcon(R.drawable.ic_notify_mascot);
         builder.setContentTitle(data.getTitle());
         builder.setContentText(data.getMessage());
@@ -647,8 +751,7 @@ public final class PopcornApplication extends Application implements IPopcornApp
             intent.putExtra(EXTRA_ACTION, data.getAction());
         }
         builder.setContentIntent(PendingIntent.getBroadcast(PopcornApplication.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT));
-        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        notificationManager.notify(1001, builder.build());
+        mNotifyManager.notify(1001, builder.build());
     }
 
     private void updateConfigurationLocale() {
@@ -682,16 +785,6 @@ public final class PopcornApplication extends Application implements IPopcornApp
         }
     }
 
-    void onReferrerReceive(String referrer) {
-        final String regex = configUseCase.getConfig().getReferrerRegex();
-        if (TextUtils.isEmpty(referrer) || TextUtils.isEmpty(regex)) {
-            return;
-        }
-        if (referrer.matches(regex)) {
-            fullVersion = true;
-            Prefs.getPopcornPrefs().setFullVersion(true);
-        }
-    }
 
     private void onActiveViewRouter(@NonNull IViewRouter activeViewRouter) {
         if (update != null && activeViewRouter.onShowView(IUpdateView.class, update)) {

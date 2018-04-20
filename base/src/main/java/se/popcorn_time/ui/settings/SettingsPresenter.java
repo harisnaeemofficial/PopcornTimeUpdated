@@ -32,6 +32,7 @@ public final class SettingsPresenter extends Presenter<ISettingsView> implements
     private OnDownloadsClearCacheFolderViewState onDownloadsClearCacheFolderViewState;
     private OnAboutSiteViewState onAboutSiteViewState;
     private OnAboutForumViewState onAboutForumViewState;
+    private OnKeepCpuAwakeState onKeepCpuAwakeState;
 
     private final String version;
 
@@ -58,6 +59,7 @@ public final class SettingsPresenter extends Presenter<ISettingsView> implements
         onDownloadsUploadSpeedViewState = new OnDownloadsUploadSpeedViewState(this, settingsUseCase.getDownloadsUploadSpeed());
         onDownloadsCacheFolderViewState = new OnDownloadsCacheFolderViewState(this, settingsUseCase.getDownloadsCacheFolder());
         onDownloadsClearCacheFolderViewState = new OnDownloadsClearCacheFolderViewState(this, settingsUseCase.isDownloadsClearCacheFolder());
+        onKeepCpuAwakeState = new OnKeepCpuAwakeState(this, settingsUseCase.isKeepCpuAwakeEnabled());
         onAboutSiteViewState = new OnAboutSiteViewState(this, configUseCase.getConfig().getSiteUrl());
         onAboutForumViewState = new OnAboutForumViewState(this, configUseCase.getConfig().getForumUrl());
 
@@ -154,6 +156,13 @@ public final class SettingsPresenter extends Presenter<ISettingsView> implements
                 onDownloadsClearCacheFolderViewState.apply(downloadsClearCacheFolder);
             }
         }));
+        disposables.add(settingsUseCase.getKeepCpuAwakeObservable().subscribe(new Consumer<Boolean>() {
+
+            @Override
+            public void accept(@io.reactivex.annotations.NonNull Boolean keepCpuAwake) throws Exception {
+                onKeepCpuAwakeState.apply(keepCpuAwake);
+            }
+        }));
     }
 
     @Override
@@ -181,6 +190,7 @@ public final class SettingsPresenter extends Presenter<ISettingsView> implements
         onDownloadsUploadSpeedViewState.apply(view);
         onDownloadsCacheFolderViewState.apply(view);
         onDownloadsClearCacheFolderViewState.apply(view);
+        onKeepCpuAwakeState.apply(view);
         onAboutSiteViewState.apply(view);
         onAboutForumViewState.apply(view);
     }
@@ -201,6 +211,7 @@ public final class SettingsPresenter extends Presenter<ISettingsView> implements
         onDownloadsUploadSpeedViewState = null;
         onDownloadsCacheFolderViewState = null;
         onDownloadsClearCacheFolderViewState = null;
+        onKeepCpuAwakeState = null;
         onAboutSiteViewState = null;
         onAboutForumViewState = null;
     }
@@ -236,8 +247,8 @@ public final class SettingsPresenter extends Presenter<ISettingsView> implements
     }
 
     @Override
-    public void setDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn) {
-        settingsUseCase.setDownloadsCheckVpn(downloadsCheckVpn);
+    public void setKeepCpuAwake(@NonNull Boolean keepCpuAwake) {
+        settingsUseCase.setKeepCpuAwake(keepCpuAwake);
     }
 
     @Override

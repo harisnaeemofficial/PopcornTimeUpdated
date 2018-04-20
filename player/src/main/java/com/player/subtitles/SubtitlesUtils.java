@@ -19,6 +19,12 @@ public class SubtitlesUtils {
         return videoPath.substring(0, videoPath.lastIndexOf(".") + 1) + extension;
     }
 
+    public static String generateSubtitlePathLangNum(String videoPath, String language, int number, String extension) {
+        File video = new File(videoPath);
+        String path = video.getParent()+"/subs/"+video.getName();
+        return path.substring(0, path.lastIndexOf(".")) + "-" + language + number + "." + extension;
+    }
+
     public static void load(String subtitlesPath, String savePath) throws InterruptedException, SubtitlesException, IOException {
         if (TextUtils.isEmpty(subtitlesPath)) {
             throw new SubtitlesException("Empty subtitles path");
@@ -28,9 +34,9 @@ public class SubtitlesUtils {
         }
         Log.d("pt_mobile", "SubtitlesUtils<load>: " + subtitlesPath);
         if (subtitlesPath.startsWith("http://") || subtitlesPath.startsWith("https://")) {
-            new UrlSubtitlesLoader().load(new URL(subtitlesPath), new File(savePath));
+            new UrlSubtitlesLoader().load(new URL(subtitlesPath), new File(savePath), null);
         } else if (subtitlesPath.startsWith("file://")) {
-            new FileSubtitlesLoader().load(new File(subtitlesPath.substring(7)), new File(savePath));
+            new FileSubtitlesLoader().load(new File(subtitlesPath.substring(7)), new File(savePath), null);
         } else {
             throw new SubtitlesException("Not supported subtitles path: " + subtitlesPath);
         }

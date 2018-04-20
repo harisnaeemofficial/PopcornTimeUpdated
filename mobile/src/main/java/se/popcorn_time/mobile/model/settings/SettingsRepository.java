@@ -23,7 +23,7 @@ public final class SettingsRepository implements ISettingsRepository {
     private static final String KEY_SUBTITLES_LANGUAGE = "subtitle-language";
     private static final String KEY_SUBTITLES_FONT_SIZE = "subtitle-font-size";
     private static final String KEY_SUBTITLES_FONT_COLOR = "subtitle-font-color";
-    private static final String KEY_CHECK_VPN = "check-vpn";
+    private static final String KEY_KEEP_CPU_AWAKE = "keep-cpu-awake";
     private static final String KEY_WIFI_ONLY = "only-wifi-connection";
     private static final String KEY_CONNECTIONS_LIMIT = "connections-limit";
     private static final String KEY_DOWNLOAD_SPEED = "maximum-download-speed";
@@ -105,16 +105,13 @@ public final class SettingsRepository implements ISettingsRepository {
 
     @Nullable
     @Override
-    public Boolean isDownloadsCheckVpn() {
-        if (preferences.contains(KEY_CHECK_VPN)) {
-            return preferences.getBoolean(KEY_CHECK_VPN, true);
-        }
-        return null;
+    public Boolean isKeepCpuAwake() {
+        return preferences.getBoolean(KEY_KEEP_CPU_AWAKE, false);
     }
 
     @Override
-    public void setDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn) {
-        preferences.edit().putBoolean(KEY_CHECK_VPN, downloadsCheckVpn).apply();
+    public void setKeepCpuAwake(@NonNull Boolean keepCpuAwake) {
+        preferences.edit().putBoolean(KEY_KEEP_CPU_AWAKE, keepCpuAwake).apply();
     }
 
     @NonNull

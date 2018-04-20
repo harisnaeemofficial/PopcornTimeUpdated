@@ -94,10 +94,10 @@
             android:title="@string/clear_cache_folder_on_exit" />
 
         <CheckBoxPreference
-            android:key="downloads_check_vpn"
+            android:key="keep_cpu_awake"
             android:persistent="false"
-            android:summary="@string/check_connection_description"
-            android:title="@string/check_connection" />
+            android:summary="If download speed drops on device lock, activate this option. This wiil consume more batter!"
+            android:title="Keep CPU always awake" />
     </PreferenceCategory>
 
     <PreferenceCategory android:title="@string/about">

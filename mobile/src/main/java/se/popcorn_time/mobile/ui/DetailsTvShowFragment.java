@@ -30,6 +30,7 @@ import se.popcorn_time.base.model.video.info.Season;
 import se.popcorn_time.base.model.video.info.Torrent;
 import se.popcorn_time.base.model.video.info.TvShowsInfo;
 import se.popcorn_time.base.model.video.info.VideoInfo;
+import se.popcorn_time.base.utils.Logger;
 import se.popcorn_time.mobile.R;
 import se.popcorn_time.mobile.ui.adapter.EpisodesAdapter;
 import se.popcorn_time.mobile.ui.adapter.VideoPosterAdapter;
@@ -120,6 +121,7 @@ public final class DetailsTvShowFragment extends DetailsVideoFragment<TvShowsInf
                 @Override
                 public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
                     final VideoInfo info = detailsUseCase.getVideoInfoProperty().getValue();
+                    Logger.debug(info.toString());
                     final Season season = detailsUseCase.getSeasonChoiceProperty().getItem();
                     if (isChecked) {
                         History.insert(getContext(), info.getImdb(), season.getNumber(), episode.getNumber());

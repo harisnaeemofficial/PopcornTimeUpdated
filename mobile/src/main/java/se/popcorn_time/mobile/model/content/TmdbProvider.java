@@ -3,17 +3,23 @@ package se.popcorn_time.mobile.model.content;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
+import com.github.wtekiela.opensub4j.response.MovieInfo;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Function;
+import io.reactivex.functions.Predicate;
+import io.reactivex.internal.functions.Functions;
 import io.reactivex.schedulers.Schedulers;
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
@@ -23,11 +29,14 @@ import retrofit2.adapter.rxjava2.RxJava2CallAdapterFactory;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
 import retrofit2.http.Query;
+import se.popcorn_time.base.model.video.info.BasicVideoInfo;
 import se.popcorn_time.base.model.video.info.CinemaMoviesInfo;
 import se.popcorn_time.base.model.video.info.CinemaTvShowsInfo;
 import se.popcorn_time.base.model.video.info.MoviesInfo;
+import se.popcorn_time.base.model.video.info.Person;
 import se.popcorn_time.base.model.video.info.TvShowsInfo;
 import se.popcorn_time.base.model.video.info.VideoInfo;
+import se.popcorn_time.base.utils.Logger;
 import se.popcorn_time.model.content.IDetailsProvider;
 import se.popcorn_time.utils.GsonUtils;
 
@@ -39,6 +48,31 @@ public final class TmdbProvider implements IDetailsProvider {
     public TmdbProvider(@NonNull String url, @NonNull String key) {
         if (TextUtils.isEmpty(url)) {
             this.api = new Api() {
+                @Override
+                public Observable<Response<ResponseBody>> getTVShowCredits(String id, String apiKey) {
+                    return Observable.just(Response.success(ResponseBody.create(MediaType.parse("application/json"),"")));
+                }
+
+                @Override
+                public Observable<Response<ResponseBody>> getMovieCredits(String imdb, String apiKey) {
+                    return Observable.just(Response.success(ResponseBody.create(MediaType.parse("application/json"),"")));
+                }
+
+                @Override
+                public Observable<Response<ResponseBody>> getTVShowRecommendations(String id, String apiKey) {
+                    return Observable.just(Response.success(ResponseBody.create(MediaType.parse("application/json"),"")));
+                }
+
+                @Override
+                public Observable<Response<ResponseBody>> getMovieRecommendations(String id, String apiKey) {
+                    return Observable.just(Response.success(ResponseBody.create(MediaType.parse("application/json"),"")));
+                }
+
+                @Override
+                public Observable<Response<ResponseBody>> getMovieTmdb(String imdb, String apiKey) {
+                    return Observable.just(Response.success(ResponseBody.create(MediaType.parse("application/json"),"")));
+                }
+
                 @Override
                 public Observable<Response<ResponseBody>> getMovieInfo(@Path("imdb") String imdb, @Query("api_key") String apiKey) {
                     return Observable.just(Response.success(ResponseBody.create(MediaType.parse("application/json"),"")));
@@ -83,10 +117,7 @@ public final class TmdbProvider implements IDetailsProvider {
     @Override
     public Observable<? extends VideoInfo> getDetails(final VideoInfo videoInfo) {
         if (videoInfo instanceof CinemaMoviesInfo) {
-            return Observable.merge(
-                    api.getMovieInfo(videoInfo.getImdb(), key).map(new MoviesInfoRxMapper((CinemaMoviesInfo) videoInfo)),
-                    api.getMovieBackdrops(videoInfo.getImdb(), key).map(new BackdropsRxMapper<>((CinemaMoviesInfo) videoInfo))
-            ).observeOn(AndroidSchedulers.mainThread());
+            return api.getMovieTmdb(videoInfo.getImdb(), key).observeOn(AndroidSchedulers.mainThread()).concatMap(new MoviesTmdbIdRxMapper((MoviesInfo) videoInfo));
         } else if (videoInfo instanceof CinemaTvShowsInfo) {
             return api.search(videoInfo.getTitle(), key).observeOn(AndroidSchedulers.mainThread()).concatMap(new TVShowSearchRxMapper((CinemaTvShowsInfo) videoInfo));
         }
@@ -102,6 +133,31 @@ public final class TmdbProvider implements IDetailsProvider {
         }
     }
 
+    private final class MoviesTmdbIdRxMapper implements Function<Response<ResponseBody>, ObservableSource<MoviesInfo>> {
+
+        MoviesInfo videoInfo;
+        MoviesTmdbIdRxMapper(MoviesInfo videoInfo) {
+            this.videoInfo = videoInfo;
+        }
+
+        @Override
+        public ObservableSource<MoviesInfo> apply(@io.reactivex.annotations.NonNull Response<ResponseBody> response) throws Exception {
+            if (response.isSuccessful()) {
+                final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
+                videoInfo.setTmdbID(GsonUtils.getAsInt(jsonInfo, "id"));
+                return Observable.merge(
+                        api.getMovieInfo(videoInfo.getImdb(), key).map(new MoviesInfoRxMapper((CinemaMoviesInfo) videoInfo)),
+                        api.getMovieBackdrops(videoInfo.getImdb(), key).map(new BackdropsRxMapper<>((CinemaMoviesInfo) videoInfo)),
+                        api.getMovieCredits(String.valueOf(videoInfo.getTmdbID()), key).map(new MovieCreditsRxMapper((CinemaMoviesInfo) videoInfo)),
+                        api.getMovieRecommendations(String.valueOf(videoInfo.getTmdbID()), key).map(new MovieRecommendationsRxMapper((CinemaMoviesInfo) videoInfo)))
+                        .observeOn(AndroidSchedulers.mainThread());
+            } else {
+                Logger.debug("response MoviesInfoRxMapper not successful: "+response.errorBody().string());
+            }
+            return Observable.just(videoInfo);
+        }
+    }
+
     private final class MoviesInfoRxMapper extends VideoInfoRxMapper<MoviesInfo> {
 
         MoviesInfoRxMapper(MoviesInfo videoInfo) {
@@ -113,6 +169,24 @@ public final class TmdbProvider implements IDetailsProvider {
             if (response.isSuccessful()) {
                 final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
                 videoInfo.setDurationMinutes(GsonUtils.getAsInt(jsonInfo, "runtime"));
+                videoInfo.setTmdbID(GsonUtils.getAsInt(jsonInfo, "id"));
+                videoInfo.setBudgetInUSD(GsonUtils.getAsLong(jsonInfo, "budget"));
+                videoInfo.setRevenueInUSD(GsonUtils.getAsLong(jsonInfo, "revenue"));
+                videoInfo.setHomepage(GsonUtils.getAsString(jsonInfo, "homepage"));
+
+                List<String> productionCountries = new ArrayList<>();
+                for (JsonElement productionCountry : jsonInfo.getAsJsonArray("production_countries")) {
+                    productionCountries.add(GsonUtils.getAsString((JsonObject) productionCountry, "name"));
+                }
+                videoInfo.setProductionCountries(productionCountries);
+
+                List<String> productionCompanies = new ArrayList<>();
+                for (JsonElement productionCompany : jsonInfo.getAsJsonArray("production_companies")) {
+                    productionCompanies.add(GsonUtils.getAsString((JsonObject) productionCompany, "name"));
+                }
+                videoInfo.setProductionCompanies(productionCompanies);
+            } else {
+                Logger.debug("response MoviesInfoRxMapper not successful: "+response.errorBody().string());
             }
             return videoInfo;
         }
@@ -132,6 +206,171 @@ public final class TmdbProvider implements IDetailsProvider {
                 if (jsonEpisodeRunTime.size() > 0) {
                     videoInfo.setDurationMinutes(jsonEpisodeRunTime.get(0).getAsInt());
                 }
+
+                videoInfo.setTmdbID(GsonUtils.getAsInt(jsonInfo, "id"));
+
+                videoInfo.setHomepage(GsonUtils.getAsString(jsonInfo, "homepage"));
+
+                List<String> productionCountries = new ArrayList<>();
+                for (JsonElement productionCountry : jsonInfo.getAsJsonArray("origin_country")) {
+                    Locale loc = new Locale("",productionCountry.getAsString());
+                    productionCountries.add(loc.getDisplayCountry());
+                }
+                videoInfo.setProductionCountries(productionCountries);
+
+                List<Person.CrewMember> creators = new ArrayList<>();
+                for (JsonElement creatorJSON : jsonInfo.getAsJsonArray("created_by")) {
+                    Person.CrewMember creator = new Person.CrewMember();
+                    creator.setProfilePic(GsonUtils.getAsString((JsonObject) creatorJSON, "profile_path"));
+                    creator.setJob("Creator");
+                    creator.setDepartment("Creators");
+                    creator.setName(GsonUtils.getAsString((JsonObject) creatorJSON, "name"));
+                    creators.add(creator);
+                }
+                videoInfo.setCrew(creators);
+
+                List<String> productionCompanies = new ArrayList<>();
+                for (JsonElement productionCompany : jsonInfo.getAsJsonArray("production_companies")) {
+                    productionCompanies.add(GsonUtils.getAsString((JsonObject) productionCompany, "name"));
+                }
+                videoInfo.setProductionCompanies(productionCompanies);
+
+            } else {
+                Logger.debug("response TvShowsInfoRxMapper not successful: "+response.errorBody().string());
+            }
+            return videoInfo;
+        }
+    }
+
+    private final class MovieCreditsRxMapper extends VideoInfoRxMapper<MoviesInfo> {
+
+        MovieCreditsRxMapper(MoviesInfo videoInfo) {
+            super(videoInfo);
+        }
+
+        @Override
+        public MoviesInfo apply(@io.reactivex.annotations.NonNull Response<ResponseBody> response) throws Exception {
+            if (response.isSuccessful()) {
+                final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
+
+                List<Person.CrewMember> crew = new ArrayList<>();
+                for (JsonElement crewMemberJSON : jsonInfo.getAsJsonArray("crew")) {
+                    Person.CrewMember crewMember = new Person.CrewMember();
+                    crewMember.setProfilePic(GsonUtils.getAsString((JsonObject) crewMemberJSON, "profile_path"));
+                    crewMember.setName(GsonUtils.getAsString((JsonObject) crewMemberJSON, "name"));
+                    crewMember.setJob(GsonUtils.getAsString((JsonObject) crewMemberJSON, "job"));
+                    crewMember.setDepartment(GsonUtils.getAsString((JsonObject) crewMemberJSON, "department"));
+                    //Logger.debug("crew of "+videoInfo.getTitle()+": "+crewMember.toString());
+                    crew.add(crewMember);
+                }
+                videoInfo.setCrew(crew);
+
+                List<Person.Actor> actors = new ArrayList<>();
+                for (JsonElement actorJSON : jsonInfo.getAsJsonArray("cast")) {
+                    Person.Actor actor = new Person.Actor();
+                    actor.setProfilePic(GsonUtils.getAsString((JsonObject) actorJSON, "profile_path"));
+                    actor.setName(GsonUtils.getAsString((JsonObject) actorJSON, "name"));
+                    actor.setCharacter(GsonUtils.getAsString((JsonObject) actorJSON, "character"));
+                    //Logger.debug("actor of "+videoInfo.getTitle()+": "+actor.toString());
+                    actors.add(actor);
+                }
+                videoInfo.setCast(actors);
+            } else {
+                Logger.debug("response MovieCreditsRxMapper not successful(tmdb id: "+videoInfo.getTmdbID()+"): "+response.errorBody().string());
+            }
+            return videoInfo;
+        }
+    }
+
+    private final class TvShowsCreditsRxMapper extends VideoInfoRxMapper<TvShowsInfo> {
+
+        TvShowsCreditsRxMapper(TvShowsInfo videoInfo) {
+            super(videoInfo);
+        }
+
+        @Override
+        public TvShowsInfo apply(@io.reactivex.annotations.NonNull Response<ResponseBody> response) throws Exception {
+            if (response.isSuccessful()) {
+                final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
+
+                List<Person.Actor> actors = new ArrayList<>();
+                for (JsonElement actorJSON : jsonInfo.getAsJsonArray("cast")) {
+                    Person.Actor actor = new Person.Actor();
+                    actor.setProfilePic(GsonUtils.getAsString((JsonObject) actorJSON, "profile_path"));
+                    actor.setName(GsonUtils.getAsString((JsonObject) actorJSON, "name"));
+                    actor.setCharacter(GsonUtils.getAsString((JsonObject) actorJSON, "character"));
+                    //Logger.debug("actor of "+videoInfo.getTitle()+": "+actor.toString());
+                    actors.add(actor);
+                }
+                videoInfo.setCast(actors);
+            } else {
+                Logger.debug("response TvShowsCreditsRxMapper not successful: "+response.errorBody().string());
+            }
+            return videoInfo;
+        }
+    }
+
+    private final class MovieRecommendationsRxMapper extends VideoInfoRxMapper<MoviesInfo> {
+
+        MovieRecommendationsRxMapper(MoviesInfo videoInfo) {
+            super(videoInfo);
+        }
+
+        @Override
+        public MoviesInfo apply(@io.reactivex.annotations.NonNull Response<ResponseBody> response) throws Exception {
+            if (response.isSuccessful()) {
+                final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
+
+                List<BasicVideoInfo> recommended = new ArrayList<>();
+                int maxRecommendations = 20;
+                for (JsonElement recommendationJSON : jsonInfo.getAsJsonArray("results")) {
+                    maxRecommendations -= 1;
+                    if (maxRecommendations <= 0) {
+                        break;
+                    }
+                    BasicVideoInfo recommendation = new BasicVideoInfo();
+                    recommendation.setTitle(GsonUtils.getAsString((JsonObject) recommendationJSON, "title"));
+                    recommendation.setPoster(GsonUtils.getAsString((JsonObject) recommendationJSON, "poster_path"));
+                    recommendation.setDescription(GsonUtils.getAsString((JsonObject) recommendationJSON, "overview"));
+                    //Logger.debug("recommendation for "+videoInfo.getTitle()+": "+recommendation.toString());
+                    recommended.add(recommendation);
+                }
+                videoInfo.setRecommendedMOVIESorTVShows(recommended);
+            } else {
+                Logger.debug("response MovieRecommendationsRxMapper not successful(tmdb id: "+videoInfo.getTmdbID()+"): "+response.errorBody().string());
+            }
+            return videoInfo;
+        }
+    }
+
+    private final class TvShowsRecommendationsRxMapper extends VideoInfoRxMapper<TvShowsInfo> {
+
+        TvShowsRecommendationsRxMapper(TvShowsInfo videoInfo) {
+            super(videoInfo);
+        }
+
+        @Override
+        public TvShowsInfo apply(@io.reactivex.annotations.NonNull Response<ResponseBody> response) throws Exception {
+            if (response.isSuccessful()) {
+                final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
+
+                List<BasicVideoInfo> recommended = new ArrayList<>();
+                int maxRecommendations = 20;
+                for (JsonElement recommendationJSON : jsonInfo.getAsJsonArray("results")) {
+                    maxRecommendations -= 1;
+                    if (maxRecommendations <= 0) {
+                        break;
+                    }
+                    BasicVideoInfo recommendation = new BasicVideoInfo();
+                    recommendation.setTitle(GsonUtils.getAsString((JsonObject) recommendationJSON, "name"));
+                    recommendation.setPoster(GsonUtils.getAsString((JsonObject) recommendationJSON, "poster_path"));
+                    recommendation.setDescription(GsonUtils.getAsString((JsonObject) recommendationJSON, "overview"));
+                    //Logger.debug("recommendation for "+videoInfo.getTitle()+": "+recommendation.toString());
+                    recommended.add(recommendation);
+                }
+                videoInfo.setRecommendedMOVIESorTVShows(recommended);
+            } else {
+                Logger.debug("response TvShowsRecommendationsRxMapper not successful: "+response.errorBody().string());
             }
             return videoInfo;
         }
@@ -168,6 +407,8 @@ public final class TmdbProvider implements IDetailsProvider {
                     return getTvShowsInfo(jsonResults.get(0).getAsJsonObject());
                 }
                 return Observable.just(videoInfo);
+            } else {
+                Logger.debug("response TVShowSearchRxMapper not successful: "+responseBodyResponse.errorBody().string());
             }
             throw new Exception(responseBodyResponse.errorBody().string());
         }
@@ -179,7 +420,9 @@ public final class TmdbProvider implements IDetailsProvider {
             }
             return Observable.merge(
                     api.getTVShowInfo(id, key).map(new TvShowsInfoRxMapper(videoInfo)),
-                    api.getTVShowBackdrops(id, key).map(new BackdropsRxMapper<>(videoInfo))
+                    api.getTVShowCredits(id, key).map(new TvShowsCreditsRxMapper(videoInfo)),
+                    api.getTVShowBackdrops(id, key).map(new BackdropsRxMapper<>(videoInfo)),
+                    api.getTVShowRecommendations(id, key).map(new TvShowsRecommendationsRxMapper(videoInfo))
             ).observeOn(AndroidSchedulers.mainThread());
         }
     }
@@ -204,6 +447,8 @@ public final class TmdbProvider implements IDetailsProvider {
                 }
                 videoInfo.setBackdrops(backdrops);
                 return videoInfo;
+            } else {
+                Logger.debug("response BackdropsRxMapper not successful: "+responseBodyResponse.errorBody().string());
             }
             throw new Exception(responseBodyResponse.errorBody().string());
         }
@@ -225,5 +470,21 @@ public final class TmdbProvider implements IDetailsProvider {
 
         @GET("3/tv/{id}/images")
         Observable<Response<ResponseBody>> getTVShowBackdrops(@Path("id") String id, @Query("api_key") String apiKey);
+
+        //IMDB details api
+        @GET("3/tv/{id}/credits")
+        Observable<Response<ResponseBody>> getTVShowCredits(@Path("id") String id, @Query("api_key") String apiKey);
+
+        @GET("3/movie/{imdb}/credits")
+        Observable<Response<ResponseBody>> getMovieCredits(@Path("imdb") String imdb, @Query("api_key") String apiKey);
+
+        @GET("3/tv/{id}/recommendations")
+        Observable<Response<ResponseBody>> getTVShowRecommendations(@Path("id") String id, @Query("api_key") String apiKey);
+
+        @GET("3/movie/{id}/recommendations")
+        Observable<Response<ResponseBody>> getMovieRecommendations(@Path("id") String id, @Query("api_key") String apiKey);
+
+        @GET("3/movie/{imdb}/external_ids")
+        Observable<Response<ResponseBody>> getMovieTmdb(@Path("imdb") String imdb, @Query("api_key") String apiKey);
     }
 }

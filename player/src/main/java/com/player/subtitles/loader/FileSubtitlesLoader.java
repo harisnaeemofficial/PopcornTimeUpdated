@@ -13,7 +13,7 @@ import java.io.InputStream;
 public final class FileSubtitlesLoader extends SubtitlesLoader<File> {
 
     @Override
-    public void load(@NonNull File file, @NonNull File saveFile) throws IOException, SubtitlesException, InterruptedException {
+    public String load(@NonNull File file, @NonNull File saveFile, String dummy) throws IOException, SubtitlesException, InterruptedException {
         int index = file.getAbsolutePath().lastIndexOf('.') + 1;
         String ext = file.getAbsolutePath().substring(index).toLowerCase();
         if (SRTFormat.EXTENSION.equals(ext)) {
@@ -23,5 +23,6 @@ public final class FileSubtitlesLoader extends SubtitlesLoader<File> {
         } else {
             throw new SubtitlesException("Not supported subtitles file: " + file.getAbsolutePath());
         }
+        return file.getAbsolutePath().substring(0, index - 1);
     }
 }

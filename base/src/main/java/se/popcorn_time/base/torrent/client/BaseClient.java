@@ -7,6 +7,7 @@ import android.os.IBinder;
 
 import se.popcorn_time.base.torrent.TorrentService;
 import se.popcorn_time.base.torrent.TorrentUtil;
+import se.popcorn_time.base.utils.Logger;
 
 public class BaseClient {
 
@@ -45,7 +46,11 @@ public class BaseClient {
     }
 
     public final boolean bind() {
-        return context.bindService(TorrentService.createIntent(context), connection, Context.BIND_AUTO_CREATE);
+        if (!bound) {
+            return context.bindService(TorrentService.createIntent(context), connection, Context.BIND_AUTO_CREATE);
+        } else {
+            return true;
+        }
     }
 
     public final void unbind() {
@@ -167,5 +172,12 @@ public class BaseClient {
             return null;
         }
         return TorrentUtil.getAvailableTorrentFile(torrentService, file, url, magnet);
+    }
+
+    public void setKeepCpuAwake(Boolean keepCpuAwake) {
+        if (!bound) {
+            return;
+        }
+        torrentService.setKeepCpuAwake(keepCpuAwake);
     }
 }

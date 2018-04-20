@@ -20,7 +20,7 @@ public interface ISettingsPresenter extends IPresenter<ISettingsView> {
 
     void setSubtitlesFontColor(@NonNull String subtitlesFontColor);
 
-    void setDownloadsCheckVpn(@NonNull Boolean downloadsCheckVpn);
+    void setKeepCpuAwake(@NonNull Boolean downloadsCheckVpn);
 
     void setDownloadsWifiOnly(@NonNull Boolean downloadsWifiOnly);
 

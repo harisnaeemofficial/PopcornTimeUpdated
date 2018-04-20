@@ -138,8 +138,13 @@ public abstract class MobilePlayerActivity extends AppCompatActivity implements 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            getWindow().setStatusBarColor(getResources().getColor(R.color.overlay));
+            getWindow().setNavigationBarColor(getResources().getColor(R.color.overlay));
+        }
         super.onCreate(savedInstanceState);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         if (getIntent().getData() != null) {
             videoFile = new File(getIntent().getData().getPath());
             if (!videoFile.exists()) {
@@ -150,22 +155,22 @@ public abstract class MobilePlayerActivity extends AppCompatActivity implements 
 
         setContentView(R.layout.activity_mobile_player);
 
-        playerSurfaceView = (SurfaceView) findViewById(R.id.player_surface_view);
+        playerSurfaceView = findViewById(R.id.player_surface_view);
 //        subtitlesSurfaceView = (SurfaceView) findViewById(R.id.subtitles_surface_view);
-        subtitlesView = (TextView) findViewById(R.id.subtitles_view);
-        bufferingView = (FrameLayout) findViewById(R.id.buffering_view);
-        bufferingPercent = (TextView) findViewById(R.id.buffering_percent);
-        toolbar = (Toolbar) findViewById(R.id.toolbar);
-        info = (TextView) findViewById(R.id.info);
-        overlay = (ViewGroup) findViewById(R.id.overlay_view);
-        playerTime = (TextView) findViewById(R.id.player_time);
-        playerSeekBar = (SeekBar) findViewById(R.id.player_seek_bar);
-        playerLength = (TextView) findViewById(R.id.player_length);
-        playerScreenLock = (ImageButton) findViewById(R.id.player_screen_lock);
-        playerScreenRotation = (ImageButton) findViewById(R.id.player_screen_rotation);
-        playerPlay = (ImageButton) findViewById(R.id.player_play);
-        playerSubtitles = (ImageButton) findViewById(R.id.player_subtitles);
-        playerAspectRatio = (ImageButton) findViewById(R.id.player_aspect_ratio);
+        subtitlesView = findViewById(R.id.subtitles_view);
+        bufferingView = findViewById(R.id.buffering_view);
+        bufferingPercent = findViewById(R.id.buffering_percent);
+        toolbar = findViewById(R.id.toolbar);
+        info = findViewById(R.id.info);
+        overlay = findViewById(R.id.overlay_view);
+        playerTime = findViewById(R.id.player_time);
+        playerSeekBar = findViewById(R.id.player_seek_bar);
+        playerLength = findViewById(R.id.player_length);
+        playerScreenLock = findViewById(R.id.player_screen_lock);
+        playerScreenRotation = findViewById(R.id.player_screen_rotation);
+        playerPlay = findViewById(R.id.player_play);
+        playerSubtitles = findViewById(R.id.player_subtitles);
+        playerAspectRatio = findViewById(R.id.player_aspect_ratio);
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -1115,7 +1120,7 @@ public abstract class MobilePlayerActivity extends AppCompatActivity implements 
         public void onChooserSelected(File file) {
             currentLangSubtitleItem = customSubtitlesItem;
             variantSubtitleItems.clear();
-            variantSubtitleItems.add(new VariantSubtitleItem(Uri.fromFile(file).toString(), file.getName()) {
+            variantSubtitleItems.add(new VariantSubtitleItem("file://"+file.getAbsolutePath(), file.getName()) {
 
                 @Override
                 public void onItemChosen() {

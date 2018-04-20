@@ -34,7 +34,7 @@ public abstract class SubtitlesLoader<Source> {
 
     }
 
-    public abstract void load(@NonNull Source source, @NonNull File saveFile) throws IOException, SubtitlesException, InterruptedException;
+    public abstract String load(@NonNull Source source, @NonNull File saveFile, String langName) throws IOException, SubtitlesException, InterruptedException;
 
     protected final void save(@NonNull InputStream data, @NonNull File saveFile, @NonNull Format format) throws IOException, SubtitlesException, InterruptedException {
         detector.reset();

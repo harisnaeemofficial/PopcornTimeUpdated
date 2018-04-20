@@ -77,8 +77,6 @@ public final class ContentProviderPresenter extends Presenter<IContentProviderVi
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (PopcornPrefs.KEY_FULL_VERSION.equals(key)) {
-            contentProviderViewState.apply();
-        }
+
     }
 }

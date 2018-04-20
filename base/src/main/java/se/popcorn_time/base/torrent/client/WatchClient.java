@@ -2,6 +2,7 @@ package se.popcorn_time.base.torrent.client;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 
 import se.popcorn_time.base.model.WatchInfo;
 import se.popcorn_time.base.torrent.TorrentService;
@@ -22,7 +23,11 @@ public class WatchClient extends BaseClient {
     public void stopWatch() {
         Intent intent = TorrentService.createIntent(context);
         intent.setAction(TorrentService.ACTION_STOP_WATCH);
-        context.startService(intent);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent);
+        } else {
+            context.startService(intent);
+        }
     }
 
     public void removeWatchListener(WatchListener listener) {

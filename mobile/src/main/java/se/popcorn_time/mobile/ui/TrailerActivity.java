@@ -7,6 +7,8 @@ import android.os.Bundle;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import com.jude.swipbackhelper.SwipeBackHelper;
+
 import se.popcorn_time.base.utils.FullscreenableChromeClient;
 import se.popcorn_time.mobile.R;
 
@@ -19,10 +21,11 @@ public class TrailerActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        SwipeBackHelper.onCreate(this);
         setContentView(R.layout.activity_trailer);
 
         String url = getIntent().getStringExtra(TRAILER_URL_KEY);
-        trailer = (WebView) findViewById(R.id.trailer_view);
+        trailer = findViewById(R.id.trailer_view);
         trailer.setWebChromeClient(new FullscreenableChromeClient(this));
         trailer.setWebViewClient(new WebViewClient());
         trailer.getSettings().setJavaScriptEnabled(true);
@@ -34,6 +37,13 @@ public class TrailerActivity extends Activity {
     protected void onDestroy() {
         trailer.loadUrl("about:blank");
         super.onDestroy();
+        SwipeBackHelper.onDestroy(this);
+    }
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        SwipeBackHelper.onPostCreate(this);
     }
 
     public static void start(Context context, String url) {

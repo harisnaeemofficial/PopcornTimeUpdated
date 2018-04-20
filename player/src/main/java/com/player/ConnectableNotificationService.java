@@ -108,7 +108,7 @@ public class ConnectableNotificationService extends Service {
         }
 
         try {
-            android.support.v4.app.NotificationCompat.Builder builder = new NotificationCompat.Builder(ConnectableNotificationService.this)
+            android.support.v4.app.NotificationCompat.Builder builder = new NotificationCompat.Builder(ConnectableNotificationService.this, "popcorn_media_control")
                     .setSmallIcon(R.drawable.ic_mr_button_connected_22_dark)
 //                    .setLargeIcon(BitmapFactory.decodeResource(getResources(), getApplicationInfo().icon))
                     .setContentTitle(device.getFriendlyName())
@@ -152,9 +152,9 @@ public class ConnectableNotificationService extends Service {
                     PendingIntent.FLAG_UPDATE_CURRENT);
             builder.addAction(R.drawable.ic_close_white_36dp, null, disconnectIntent);
 
-            //TODO fix this: NotificationCompat.MediaStyle style = new NotificationCompat.MediaStyle();
-            //style.setShowActionsInCompactView(0, 1);
-            //builder.setStyle(style);
+            android.support.v4.media.app.NotificationCompat.MediaStyle style = new android.support.v4.media.app.NotificationCompat.MediaStyle();
+            style.setShowActionsInCompactView(0, 1);
+            builder.setStyle(style);
 
             NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             manager.notify(1112, builder.build());

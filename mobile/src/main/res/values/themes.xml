@@ -10,6 +10,11 @@
         <item name="colorPrimary">#000000</item>
 
         <item name="shareIconColor">@color/v3_accent</item>
+
+        //if you don't set this the background will be black when you slide.
+        <item name="android:windowIsTranslucent">true</item>
+        //set the right in/out animation of Activity,you can change this to yours
+        <item name="android:windowAnimationStyle">@style/SlideRightAnimation</item>
     </style>
 
     <style name="RobotoTextViewStyle" parent="android:Widget.TextView">

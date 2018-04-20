@@ -54,6 +54,19 @@
     <dimen name="second_launch_dialog_title_text_size">16sp</dimen>
     <dimen name="second_launch_dialog_text_size">11sp</dimen>
 
+    <dimen name="dp1">1dp</dimen>
+
+    <!-- Stepper View -->
+    <dimen name="stepper_margin_top">24dp</dimen>
+    <dimen name="stepper_point_size">24dp</dimen>
+    <dimen name="stepper_point_half_size">12dp</dimen>
+    <dimen name="vertical_stepper_point_margin_start">24dp</dimen>
+    <dimen name="vertical_stepper_point_margin_end">12dp</dimen>
+    <dimen name="vertical_stepper_line_margin_top">8dp</dimen>
+    <dimen name="vertical_stepper_line_width">1dp</dimen>
+    <dimen name="vertical_stepper_item_space_height">8dp</dimen>
+
+
     <!-- other -->
     <dimen name="no_connection_label_size">22sp</dimen>
     <dimen name="no_result_label_size">32sp</dimen>
