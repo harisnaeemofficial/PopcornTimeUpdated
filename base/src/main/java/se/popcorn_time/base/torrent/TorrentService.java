@@ -84,7 +84,6 @@ import se.popcorn_time.base.torrent.watch.WatchListener;
 import se.popcorn_time.base.torrent.watch.WatchTask;
 import se.popcorn_time.base.utils.Logger;
 
-import static com.player.MobilePlayerActivity.TAG;
 
 public final class TorrentService extends Service {
 
@@ -326,45 +325,41 @@ public final class TorrentService extends Service {
     }
 
     private void alertsLoop() {
-        Runnable r = new Runnable() {
+        Runnable r = () -> {
+            alert_ptr_deque deque = new alert_ptr_deque();
 
-            @Override
-            public void run() {
-                alert_ptr_deque deque = new alert_ptr_deque();
+            time_duration max_wait = libtorrent.milliseconds(1500);
 
-                time_duration max_wait = libtorrent.milliseconds(1500);
+            while (running) {
+                alert ptr = mSession.wait_for_alert(max_wait);
+                if (ptr != null) {
+                    mSession.pop_alerts(deque);
+                    long size = deque.size();
+                    for (int i = 0; i < size; i++) {
+                        final alert swigAlert = deque.getitem(i);
+                        final int type = swigAlert.type();
+                        if (type == save_resume_data_alert.alert_type) {
+                            final save_resume_data_alert srd_alert = alert.cast_to_save_resume_data_alert(swigAlert);
+                            Downloads.update(TorrentService.this, srd_alert.getHandle().info_hash().to_hex(), Vectors.char_vector2bytes(srd_alert.getResume_data().bencode()));
+                        } else if (piece_finished_alert.alert_type == type
+                                || torrent_paused_alert.alert_type == type
+                                || torrent_finished_alert.alert_type == type) {
+                            alert.cast_to_torrent_alert(swigAlert).getHandle().save_resume_data();
 
-                while (running) {
-                    alert ptr = mSession.wait_for_alert(max_wait);
-                    if (ptr != null) {
-                        mSession.pop_alerts(deque);
-                        long size = deque.size();
-                        for (int i = 0; i < size; i++) {
-                            final alert swigAlert = deque.getitem(i);
-                            final int type = swigAlert.type();
-                            if (type == save_resume_data_alert.alert_type) {
-                                final save_resume_data_alert srd_alert = alert.cast_to_save_resume_data_alert(swigAlert);
-                                Downloads.update(TorrentService.this, srd_alert.getHandle().info_hash().to_hex(), Vectors.char_vector2bytes(srd_alert.getResume_data().bencode()));
-                            } else if (piece_finished_alert.alert_type == type
-                                    || torrent_paused_alert.alert_type == type
-                                    || torrent_finished_alert.alert_type == type) {
-                                alert.cast_to_torrent_alert(swigAlert).getHandle().save_resume_data();
-
-                                if (piece_finished_alert.alert_type == type) {
-                                    pieceFinishedCallback(swigAlert);
-                                }
-                                if (torrent_paused_alert.alert_type == type) {
-                                    torrentPausedCallback(swigAlert);
-                                }
-                                if (torrent_finished_alert.alert_type == type) {
-                                    torrentFinishedCallback(swigAlert);
-                                }
-                            } else if (torrent_resumed_alert.alert_type == type) {
-                                torrentResumedCallback(swigAlert);
+                            if (piece_finished_alert.alert_type == type) {
+                                pieceFinishedCallback(swigAlert);
                             }
+                            if (torrent_paused_alert.alert_type == type) {
+                                torrentPausedCallback(swigAlert);
+                            }
+                            if (torrent_finished_alert.alert_type == type) {
+                                torrentFinishedCallback(swigAlert);
+                            }
+                        } else if (torrent_resumed_alert.alert_type == type) {
+                            torrentResumedCallback(swigAlert);
                         }
-                        deque.clear();
                     }
+                    deque.clear();
                 }
             }
         };
@@ -457,10 +452,9 @@ public final class TorrentService extends Service {
                 do {
                     final DownloadInfo info = new DownloadInfo();
                     Downloads.populate(info, cursor);
+                    if (info.state != TorrentState.FINISHED) {
 
-                    new Handler(Looper.getMainLooper()).post(new Runnable() {
-                        @Override
-                        public void run() {
+                        new Handler(Looper.getMainLooper()).post(() -> {
 
                             String channelId = "popcorn_state_info";
 
@@ -481,8 +475,8 @@ public final class TorrentService extends Service {
                                 mNotifyManager.notify((int) info.id, mBuilder.build());
                                 notificationIDs.add((int) info.id);
                             }
-                        }
-                    });
+                        });
+                    }
                 } while (cursor.moveToNext());
             }
         }
@@ -496,7 +490,7 @@ public final class TorrentService extends Service {
             if (wakeLock == null) {
                 PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
                 if (pm != null) {
-                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, TAG);
+                    wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "pt_mobile");
                 }
             }
 

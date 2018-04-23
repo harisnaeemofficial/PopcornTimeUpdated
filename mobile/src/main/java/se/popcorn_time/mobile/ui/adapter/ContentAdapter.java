@@ -1,6 +1,9 @@
 package se.popcorn_time.mobile.ui.adapter;
 
+import android.app.Activity;
+import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -8,9 +11,12 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.RippleDrawable;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityOptionsCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.view.ViewCompat;
 import android.support.v7.graphics.Palette;
 import android.support.v7.widget.RecyclerView;
 import android.util.DisplayMetrics;
@@ -30,6 +36,7 @@ import com.squareup.picasso.Target;
 import java.util.List;
 import java.util.Locale;
 
+import se.popcorn_time.IUseCaseManager;
 import se.popcorn_time.VibrantUtils;
 import se.popcorn_time.base.database.tables.Favorites;
 import se.popcorn_time.base.model.video.info.VideoInfo;
@@ -64,6 +71,10 @@ public final class ContentAdapter extends RecyclerView.Adapter<ContentAdapter.Vi
         notifyDataSetChanged();
     }
 
+    public List<VideoInfo> getContent() {
+        return content;
+    }
+
     public void setItemSize(Display display, int columnCount, int spacingPixels) {
         final DisplayMetrics metrics = new DisplayMetrics();
         display.getMetrics(metrics);
@@ -83,10 +94,10 @@ public final class ContentAdapter extends RecyclerView.Adapter<ContentAdapter.Vi
         ViewHolder(@NonNull ViewGroup parent) {
             super(LayoutInflater.from(parent.getContext()).inflate(R.layout.view_item_content, parent, false));
             itemView.setOnClickListener(this);
-            poster = (ImageView) itemView.findViewById(R.id.poster);
-            rating = (TextView) itemView.findViewById(R.id.rating);
-            favorite = (CompoundButton) itemView.findViewById(R.id.favorite);
-            year = (TextView) itemView.findViewById(R.id.year);
+            poster = itemView.findViewById(R.id.poster);
+            rating = itemView.findViewById(R.id.rating);
+            favorite = itemView.findViewById(R.id.favorite);
+            year = itemView.findViewById(R.id.year);
         }
 
         void onBind(@NonNull VideoInfo info, int width, int height) {
@@ -109,8 +120,23 @@ public final class ContentAdapter extends RecyclerView.Adapter<ContentAdapter.Vi
 
         @Override
         public void onClick(View v) {
-            VibrantUtils.setAccentColor(((BitmapDrawable) poster.getDrawable()).getBitmap(), ContextCompat.getColor(itemView.getContext(), R.color.v3_accent));
-            DetailsActivity.start(v.getContext(), info);
+            VibrantUtils.setAccentColor(((BitmapDrawable) poster.getDrawable()).getBitmap(), ContextCompat.getColor(itemView.getContext(), R.color.v3_accent), accentColor -> {
+                if (Configuration.ORIENTATION_LANDSCAPE == itemView.getContext().getResources().getConfiguration().orientation) {
+                    DetailsActivity.start(v.getContext(), info);
+                } else {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        Intent intent = new Intent(v.getContext(), DetailsActivity.class);
+                        ActivityOptionsCompat options = ActivityOptionsCompat.
+                                makeSceneTransitionAnimation((Activity) v.getContext(),
+                                        poster,
+                                        "image_transition");
+                        ((IUseCaseManager) v.getContext().getApplicationContext()).getDetailsUseCase().getVideoInfoProperty().setValue(info);
+                        v.getContext().startActivity(intent, options.toBundle());
+                    } else {
+                        DetailsActivity.start(v.getContext(), info);
+                    }
+                }
+            });
         }
 
         @Override

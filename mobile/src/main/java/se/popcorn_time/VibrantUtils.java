@@ -1,6 +1,9 @@
 package se.popcorn_time;
 
 import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.support.annotation.ColorInt;
+import android.support.annotation.NonNull;
 import android.support.v7.graphics.Palette;
 
 public final class VibrantUtils {
@@ -14,11 +17,28 @@ public final class VibrantUtils {
         return accentColor;
     }
 
-    public static void setAccentColor(Bitmap bitmap, final int defaultColor) {
-        final Palette palette = Palette.from(bitmap).generate();
-        accentColor = palette.getVibrantColor(defaultColor);
-        if (accentColor == defaultColor) {
-            accentColor = palette.getMutedColor(defaultColor);
-        }
+    public static void setAccentColor(Bitmap bitmap, final int defaultColor, OnAccentColorReady listener) {
+        retrieveAccentColor(bitmap, defaultColor, accentColor -> {
+            VibrantUtils.accentColor = accentColor;
+            listener.onReady(accentColor);
+        });
+    }
+
+    public static void setAccentColor(int color) {
+        accentColor = color;
+    }
+
+    public static void retrieveAccentColor(Bitmap bitmap, final int defaultColor, OnAccentColorReady listener) {
+        Palette.from(bitmap).generate(palette -> {
+            int accentColor = palette.getVibrantColor(defaultColor);
+            if (accentColor == defaultColor) {
+                accentColor = palette.getMutedColor(defaultColor);
+            }
+            listener.onReady(accentColor);
+        });
+    }
+
+    public interface OnAccentColorReady {
+        void onReady(int accentColor);
     }
 }

@@ -1,8 +1,8 @@
 <component name="libraryTable">
   <library name="Gradle: com.jude:swipebackhelper-3.1.2">
     <CLASSES>
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/swipebackhelper-3.1.2.aar/dcf81f8df4ab0bbeb49863582fdf3cb5/jars/classes.jar!/" />
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/swipebackhelper-3.1.2.aar/dcf81f8df4ab0bbeb49863582fdf3cb5/res" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/swipebackhelper-3.1.2.aar/1cd046984bd9ad32a1a3599fbdb4ffbf/res" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/swipebackhelper-3.1.2.aar/1cd046984bd9ad32a1a3599fbdb4ffbf/jars/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

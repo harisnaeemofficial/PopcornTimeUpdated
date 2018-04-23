@@ -6,7 +6,9 @@ import com.player.utils.StringUtil;
 
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class VideoInfo {
 
@@ -34,38 +36,13 @@ public class VideoInfo {
     private long budgetInUSD;
     private long revenueInUSD;
     private String homepage;
-    private List<String> productionCompanies;
-    private List<String> productionCountries;
-    private List<Person.Actor> cast;
-    private List<Person.CrewMember> crew;
-    private List<BasicVideoInfo> recommendedMOVIESorTVShows;
+    private ArrayList<String> productionCompanies;
+    private ArrayList<String> productionCountries;
+    private ArrayList<Person> cast;
 
-    @Override
-    public String toString() {
-        String result = "VideoInfo {" +
-                getBudgetInUSD() + " - budget\n" +
-                getActors() + " - actors\n" +
-                TextUtils.join(", ", getBackdrops()) + " - backdrops\n";
-        result += "cast: "+cast.size();
-        for (Person.Actor actor: getCast()) {
-            result += actor.toString();
-        }
-        result += "cast\n";
-        for (Person.CrewMember actor: getCrew()) {
-            result += actor.toString();
-        }
-        result += "crew\n";
-                result += TextUtils.join(", ", getGenres()) + " - genres\n" +
-                TextUtils.join(", ", getProductionCompanies()) + " - companies\n" +
-                TextUtils.join(", ", getProductionCountries()) + " - countries\n";
-        for (BasicVideoInfo actor: getRecommendedMOVIESorTVShows()) {
-            result += actor.toString();
-        }
-        result += "recommended\n";
-                result += getHomepage() + " - homepage\n" +
-                getRevenueInUSD() + " - revenue\n";
-        return result;
-    }
+    //      Department, members
+    private Map<String, List<Person>> crewMembersByDepartment;
+    private List<BasicVideoInfo> recommendedMOVIESorTVShows;
 
     public long getBudgetInUSD() {
         return budgetInUSD;
@@ -91,6 +68,14 @@ public class VideoInfo {
         this.revenueInUSD = revenueInUSD;
     }
 
+    public Map<String, List<Person>> getCrewMembersByDepartment() {
+        return crewMembersByDepartment;
+    }
+
+    public void setCrewMembersByDepartment(Map<String, List<Person>> crewMembersByDepartment) {
+        this.crewMembersByDepartment = crewMembersByDepartment;
+    }
+
     public String getHomepage() {
         return homepage;
     }
@@ -103,7 +88,7 @@ public class VideoInfo {
         return productionCompanies;
     }
 
-    public void setProductionCompanies(List<String> productionCompanies) {
+    public void setProductionCompanies(ArrayList<String> productionCompanies) {
         this.productionCompanies = productionCompanies;
     }
 
@@ -111,24 +96,16 @@ public class VideoInfo {
         return productionCountries;
     }
 
-    public void setProductionCountries(List<String> productionCountries) {
+    public void setProductionCountries(ArrayList<String> productionCountries) {
         this.productionCountries = productionCountries;
     }
 
-    public List<Person.Actor> getCast() {
+    public List<Person> getCast() {
         return cast;
     }
 
-    public void setCast(List<Person.Actor> cast) {
+    public void setCast(ArrayList<Person> cast) {
         this.cast = cast;
-    }
-
-    public List<Person.CrewMember> getCrew() {
-        return crew;
-    }
-
-    public void setCrew(List<Person.CrewMember> crew) {
-        this.crew = crew;
     }
 
     public List<BasicVideoInfo> getRecommendedMOVIESorTVShows() {

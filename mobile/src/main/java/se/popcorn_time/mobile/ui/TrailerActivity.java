@@ -12,7 +12,7 @@ import com.jude.swipbackhelper.SwipeBackHelper;
 import se.popcorn_time.base.utils.FullscreenableChromeClient;
 import se.popcorn_time.mobile.R;
 
-public class TrailerActivity extends Activity {
+public class TrailerActivity extends BaseSwipeBackActivity {
 
     public static final String TRAILER_URL_KEY = "trailer-url";
 
@@ -21,7 +21,6 @@ public class TrailerActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        SwipeBackHelper.onCreate(this);
         setContentView(R.layout.activity_trailer);
 
         String url = getIntent().getStringExtra(TRAILER_URL_KEY);
@@ -37,15 +36,7 @@ public class TrailerActivity extends Activity {
     protected void onDestroy() {
         trailer.loadUrl("about:blank");
         super.onDestroy();
-        SwipeBackHelper.onDestroy(this);
     }
-
-    @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        SwipeBackHelper.onPostCreate(this);
-    }
-
     public static void start(Context context, String url) {
         Intent intent = new Intent(context, TrailerActivity.class);
         intent.putExtra(TrailerActivity.TRAILER_URL_KEY, url);

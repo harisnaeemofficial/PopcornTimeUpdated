@@ -36,11 +36,16 @@
                     android:id="@+id/poster"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
+                    android:transitionName="image_transition"
                     android:fitsSystemWindows="true"
                     android:scaleType="centerCrop"
                     tools:src="@drawable/poster" />
 
-                <include layout="@layout/view_details_header" />
+                <include
+                    android:id="@+id/view_details_header"
+                    layout="@layout/view_details_header"
+                    android:visibility="invisible"
+                    tools:visibility="visible" />
             </FrameLayout>
 
             <View
@@ -59,8 +64,11 @@
     </android.support.design.widget.AppBarLayout>
 
     <android.support.v4.widget.NestedScrollView
+        android:id="@+id/nested_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:visibility="invisible"
+        tools:visibility="visible"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <FrameLayout
@@ -89,6 +97,7 @@
         android:layout_marginEnd="80dp"
         android:layout_marginRight="80dp"
         android:clickable="true"
+        android:visibility="invisible"
         app:elevation="8dp"
         app:fabSize="normal"
         app:layout_anchor="@id/appbar"
@@ -101,6 +110,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:clickable="true"
+        android:visibility="invisible"
         app:elevation="8dp"
         app:fabSize="normal"
         app:layout_anchor="@id/appbar"

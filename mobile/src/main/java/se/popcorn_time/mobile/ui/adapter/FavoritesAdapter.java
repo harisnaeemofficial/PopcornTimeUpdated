@@ -151,8 +151,7 @@ public final class FavoritesAdapter extends RecyclerView.Adapter<FavoritesAdapte
 
         @Override
         public void onClick(View v) {
-            VibrantUtils.setAccentColor(((BitmapDrawable) poster.getDrawable()).getBitmap(), ContextCompat.getColor(v.getContext(), R.color.v3_accent));
-            DetailsActivity.start(v.getContext(), info);
+            VibrantUtils.setAccentColor(((BitmapDrawable) poster.getDrawable()).getBitmap(), ContextCompat.getColor(v.getContext(), R.color.v3_accent), accentColor -> DetailsActivity.start(v.getContext(), info));
         }
 
         @Override

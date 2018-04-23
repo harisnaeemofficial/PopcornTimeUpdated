@@ -3,23 +3,26 @@ package se.popcorn_time.mobile.model.content;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
-import com.github.wtekiela.opensub4j.response.MovieInfo;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.annotations.SerializedName;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableSource;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.functions.Function;
-import io.reactivex.functions.Predicate;
-import io.reactivex.internal.functions.Functions;
 import io.reactivex.schedulers.Schedulers;
 import okhttp3.MediaType;
 import okhttp3.ResponseBody;
@@ -44,6 +47,25 @@ public final class TmdbProvider implements IDetailsProvider {
 
     private final Api api;
     private final String key;
+
+    //allowed people per department to be shown in the description
+    private static Map<String, Integer> allowedPerDepartment = new HashMap<>();
+    static {
+        //not important for user
+        allowedPerDepartment.put("Art", 2);
+        allowedPerDepartment.put("Camera", 2);
+        allowedPerDepartment.put("Costume & Make-Up", 1);
+        allowedPerDepartment.put("Crew", 1);
+        allowedPerDepartment.put("Lighting", 1);
+        allowedPerDepartment.put("Visual Effects", 2);
+
+        //more important for user
+        allowedPerDepartment.put("Directing", 3);
+        allowedPerDepartment.put("Editing", 3);
+        allowedPerDepartment.put("Production", 4);
+        allowedPerDepartment.put("Sound", 2);
+        allowedPerDepartment.put("Writing", 3);
+    }
 
     public TmdbProvider(@NonNull String url, @NonNull String key) {
         if (TextUtils.isEmpty(url)) {
@@ -145,11 +167,12 @@ public final class TmdbProvider implements IDetailsProvider {
             if (response.isSuccessful()) {
                 final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
                 videoInfo.setTmdbID(GsonUtils.getAsInt(jsonInfo, "id"));
+                String tmdb = String.valueOf(videoInfo.getTmdbID());
                 return Observable.merge(
-                        api.getMovieInfo(videoInfo.getImdb(), key).map(new MoviesInfoRxMapper((CinemaMoviesInfo) videoInfo)),
-                        api.getMovieBackdrops(videoInfo.getImdb(), key).map(new BackdropsRxMapper<>((CinemaMoviesInfo) videoInfo)),
-                        api.getMovieCredits(String.valueOf(videoInfo.getTmdbID()), key).map(new MovieCreditsRxMapper((CinemaMoviesInfo) videoInfo)),
-                        api.getMovieRecommendations(String.valueOf(videoInfo.getTmdbID()), key).map(new MovieRecommendationsRxMapper((CinemaMoviesInfo) videoInfo)))
+                        api.getMovieInfo(tmdb, key).map(new MoviesInfoRxMapper((CinemaMoviesInfo) videoInfo)),
+                        api.getMovieBackdrops(tmdb, key).map(new BackdropsRxMapper<>((CinemaMoviesInfo) videoInfo)),
+                        api.getMovieCredits(tmdb, key).map(new MovieCreditsRxMapper((CinemaMoviesInfo) videoInfo)),
+                        api.getMovieRecommendations(tmdb, key).map(new MovieRecommendationsRxMapper((CinemaMoviesInfo) videoInfo)))
                         .observeOn(AndroidSchedulers.mainThread());
             } else {
                 Logger.debug("response MoviesInfoRxMapper not successful: "+response.errorBody().string());
@@ -174,13 +197,13 @@ public final class TmdbProvider implements IDetailsProvider {
                 videoInfo.setRevenueInUSD(GsonUtils.getAsLong(jsonInfo, "revenue"));
                 videoInfo.setHomepage(GsonUtils.getAsString(jsonInfo, "homepage"));
 
-                List<String> productionCountries = new ArrayList<>();
+                ArrayList<String> productionCountries = new ArrayList<>();
                 for (JsonElement productionCountry : jsonInfo.getAsJsonArray("production_countries")) {
                     productionCountries.add(GsonUtils.getAsString((JsonObject) productionCountry, "name"));
                 }
                 videoInfo.setProductionCountries(productionCountries);
 
-                List<String> productionCompanies = new ArrayList<>();
+                ArrayList<String> productionCompanies = new ArrayList<>();
                 for (JsonElement productionCompany : jsonInfo.getAsJsonArray("production_companies")) {
                     productionCompanies.add(GsonUtils.getAsString((JsonObject) productionCompany, "name"));
                 }
@@ -211,25 +234,27 @@ public final class TmdbProvider implements IDetailsProvider {
 
                 videoInfo.setHomepage(GsonUtils.getAsString(jsonInfo, "homepage"));
 
-                List<String> productionCountries = new ArrayList<>();
+                ArrayList<String> productionCountries = new ArrayList<>();
                 for (JsonElement productionCountry : jsonInfo.getAsJsonArray("origin_country")) {
                     Locale loc = new Locale("",productionCountry.getAsString());
                     productionCountries.add(loc.getDisplayCountry());
                 }
                 videoInfo.setProductionCountries(productionCountries);
 
-                List<Person.CrewMember> creators = new ArrayList<>();
-                for (JsonElement creatorJSON : jsonInfo.getAsJsonArray("created_by")) {
-                    Person.CrewMember creator = new Person.CrewMember();
-                    creator.setProfilePic(GsonUtils.getAsString((JsonObject) creatorJSON, "profile_path"));
-                    creator.setJob("Creator");
-                    creator.setDepartment("Creators");
-                    creator.setName(GsonUtils.getAsString((JsonObject) creatorJSON, "name"));
-                    creators.add(creator);
-                }
-                videoInfo.setCrew(creators);
+                Map<String, List<Person>> creators = new HashMap<>();
 
-                List<String> productionCompanies = new ArrayList<>();
+                ArrayList<Person> creatorsList = new ArrayList<>();
+                for (JsonElement creatorJSON : jsonInfo.getAsJsonArray("created_by")) {
+                    Person creator = new Person();
+                    creator.setProfilePic(GsonUtils.getAsString((JsonObject) creatorJSON, "profile_path"));
+                    creator.setSubtitle("Creator");
+                    creator.setTitle(GsonUtils.getAsString((JsonObject) creatorJSON, "name"));
+                    creatorsList.add(creator);
+                }
+                creators.put("Creators", creatorsList);
+                videoInfo.setCrewMembersByDepartment(creators);
+
+                ArrayList<String> productionCompanies = new ArrayList<>();
                 for (JsonElement productionCompany : jsonInfo.getAsJsonArray("production_companies")) {
                     productionCompanies.add(GsonUtils.getAsString((JsonObject) productionCompany, "name"));
                 }
@@ -253,25 +278,96 @@ public final class TmdbProvider implements IDetailsProvider {
             if (response.isSuccessful()) {
                 final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
 
-                List<Person.CrewMember> crew = new ArrayList<>();
-                for (JsonElement crewMemberJSON : jsonInfo.getAsJsonArray("crew")) {
-                    Person.CrewMember crewMember = new Person.CrewMember();
-                    crewMember.setProfilePic(GsonUtils.getAsString((JsonObject) crewMemberJSON, "profile_path"));
-                    crewMember.setName(GsonUtils.getAsString((JsonObject) crewMemberJSON, "name"));
-                    crewMember.setJob(GsonUtils.getAsString((JsonObject) crewMemberJSON, "job"));
-                    crewMember.setDepartment(GsonUtils.getAsString((JsonObject) crewMemberJSON, "department"));
-                    //Logger.debug("crew of "+videoInfo.getTitle()+": "+crewMember.toString());
-                    crew.add(crewMember);
-                }
-                videoInfo.setCrew(crew);
+                Map<String, List<Person>> crew = new HashMap<>();
 
-                List<Person.Actor> actors = new ArrayList<>();
-                for (JsonElement actorJSON : jsonInfo.getAsJsonArray("cast")) {
-                    Person.Actor actor = new Person.Actor();
+                List<Person> artList = new ArrayList<>();
+                List<Person> cameraList = new ArrayList<>();
+                List<Person> costumeNmakeupList = new ArrayList<>();
+                List<Person> crewList = new ArrayList<>();
+                List<Person> lightingList = new ArrayList<>();
+                List<Person> visualsList = new ArrayList<>();
+                List<Person> directingList = new ArrayList<>();
+                List<Person> editingList = new ArrayList<>();
+                List<Person> productionList = new ArrayList<>();
+                List<Person> soundList = new ArrayList<>();
+                List<Person> writingList = new ArrayList<>();
+
+                for (JsonElement crewMemberJSON : jsonInfo.getAsJsonArray("crew")) {
+                    String department = GsonUtils.getAsString((JsonObject) crewMemberJSON, "department");
+                    int allowedInDepartment = allowedPerDepartment.get(department);
+                    if (allowedInDepartment > 0) {
+                        allowedPerDepartment.put(department, allowedInDepartment - 1);
+                        Person crewMember = new Person();
+                        crewMember.setProfilePic(GsonUtils.getAsString((JsonObject) crewMemberJSON, "profile_path"));
+                        crewMember.setTitle(GsonUtils.getAsString((JsonObject) crewMemberJSON, "name"));
+                        crewMember.setSubtitle(GsonUtils.getAsString((JsonObject) crewMemberJSON, "job"));
+
+                        if (department != null) {
+                            switch (department) {
+                                case "Art":
+                                    artList.add(crewMember);
+                                    break;
+                                case "Camera":
+                                    cameraList.add(crewMember);
+                                    break;
+                                case "Costume & Make-Up":
+                                    costumeNmakeupList.add(crewMember);
+                                    break;
+                                case "Crew":
+                                    crewList.add(crewMember);
+                                    break;
+                                case "Lighting":
+                                    lightingList.add(crewMember);
+                                    break;
+                                case "Visual Effects":
+                                    visualsList.add(crewMember);
+                                    break;
+                                case "Directing":
+                                    directingList.add(crewMember);
+                                    break;
+                                case "Editing":
+                                    editingList.add(crewMember);
+                                    break;
+                                case "Production":
+                                    productionList.add(crewMember);
+                                    break;
+                                case "Sound":
+                                    soundList.add(crewMember);
+                                    break;
+                                case "Writing":
+                                    writingList.add(crewMember);
+                                    break;
+                            }
+                        }
+                    } else {
+                        break;
+                    }
+                }
+
+                crew.put("Art", artList);
+                crew.put("Camera", cameraList);
+                crew.put("Costume & Make-Up",costumeNmakeupList);
+                crew.put("Crew", crewList);
+                crew.put("Lighting", lightingList);
+                crew.put("Visual Effects",visualsList);
+                crew.put("Directing", directingList);
+                crew.put("Editing", editingList);
+                crew.put("Production", productionList);
+                crew.put("Sound", soundList);
+                crew.put("Writing", writingList);
+
+                videoInfo.setCrewMembersByDepartment(crew);
+
+                ArrayList<Person> actors = new ArrayList<>();
+
+                JsonArray jsonCrew = jsonInfo.getAsJsonArray("cast");
+                for (int i = 0; i < 13; i++) {
+                    JsonElement actorJSON = jsonCrew.get(i);
+                    Person actor = new Person();
                     actor.setProfilePic(GsonUtils.getAsString((JsonObject) actorJSON, "profile_path"));
-                    actor.setName(GsonUtils.getAsString((JsonObject) actorJSON, "name"));
-                    actor.setCharacter(GsonUtils.getAsString((JsonObject) actorJSON, "character"));
-                    //Logger.debug("actor of "+videoInfo.getTitle()+": "+actor.toString());
+                    actor.setTitle(GsonUtils.getAsString((JsonObject) actorJSON, "name"));
+                    actor.setSubtitle(GsonUtils.getAsString((JsonObject) actorJSON, "character"));
+                    Logger.debug("actor of "+i+": "+actor.getTitle());
                     actors.add(actor);
                 }
                 videoInfo.setCast(actors);
@@ -279,6 +375,42 @@ public final class TmdbProvider implements IDetailsProvider {
                 Logger.debug("response MovieCreditsRxMapper not successful(tmdb id: "+videoInfo.getTmdbID()+"): "+response.errorBody().string());
             }
             return videoInfo;
+        }
+    }
+
+    public class ContentActor {
+
+        @SerializedName("profile_path")
+        private String profilePic;
+
+        @SerializedName("name")
+        private String name;
+
+        @SerializedName("character")
+        private String character;
+
+        public String getProfilePic() {
+            return profilePic;
+        }
+
+        public void setProfilePic(String profilePic) {
+            this.profilePic = profilePic;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getCharacter() {
+            return character;
+        }
+
+        public void setCharacter(String character) {
+            this.character = character;
         }
     }
 
@@ -293,14 +425,20 @@ public final class TmdbProvider implements IDetailsProvider {
             if (response.isSuccessful()) {
                 final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
 
-                List<Person.Actor> actors = new ArrayList<>();
+                int maxActors = 12;
+                ArrayList<Person> actors = new ArrayList<>();
                 for (JsonElement actorJSON : jsonInfo.getAsJsonArray("cast")) {
-                    Person.Actor actor = new Person.Actor();
-                    actor.setProfilePic(GsonUtils.getAsString((JsonObject) actorJSON, "profile_path"));
-                    actor.setName(GsonUtils.getAsString((JsonObject) actorJSON, "name"));
-                    actor.setCharacter(GsonUtils.getAsString((JsonObject) actorJSON, "character"));
-                    //Logger.debug("actor of "+videoInfo.getTitle()+": "+actor.toString());
-                    actors.add(actor);
+                    if (maxActors > 0) {
+                        maxActors -= 1;
+                        Person actor = new Person();
+                        actor.setProfilePic(GsonUtils.getAsString((JsonObject) actorJSON, "profile_path"));
+                        actor.setTitle(GsonUtils.getAsString((JsonObject) actorJSON, "name"));
+                        actor.setSubtitle(GsonUtils.getAsString((JsonObject) actorJSON, "character"));
+                        Logger.debug("actor of "+videoInfo.getTitle()+": "+actor.getTitle());
+                        actors.add(actor);
+                    } else {
+                        break;
+                    }
                 }
                 videoInfo.setCast(actors);
             } else {
@@ -322,10 +460,10 @@ public final class TmdbProvider implements IDetailsProvider {
                 final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
 
                 List<BasicVideoInfo> recommended = new ArrayList<>();
-                int maxRecommendations = 20;
+                int maxRecommendations = 12;
                 for (JsonElement recommendationJSON : jsonInfo.getAsJsonArray("results")) {
                     maxRecommendations -= 1;
-                    if (maxRecommendations <= 0) {
+                    if (maxRecommendations < 0) {
                         break;
                     }
                     BasicVideoInfo recommendation = new BasicVideoInfo();
@@ -355,10 +493,10 @@ public final class TmdbProvider implements IDetailsProvider {
                 final JsonObject jsonInfo = new JsonParser().parse(response.body().charStream()).getAsJsonObject();
 
                 List<BasicVideoInfo> recommended = new ArrayList<>();
-                int maxRecommendations = 20;
+                int maxRecommendations = 12;
                 for (JsonElement recommendationJSON : jsonInfo.getAsJsonArray("results")) {
                     maxRecommendations -= 1;
-                    if (maxRecommendations <= 0) {
+                    if (maxRecommendations < 0) {
                         break;
                     }
                     BasicVideoInfo recommendation = new BasicVideoInfo();

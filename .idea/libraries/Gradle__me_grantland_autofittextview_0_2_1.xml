@@ -1,8 +1,8 @@
 <component name="libraryTable">
   <library name="Gradle: me.grantland:autofittextview-0.2.1">
     <CLASSES>
-      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/autofittextview-0.2.1.aar/1aeea351abdc86712be194858cff90cd/res" />
-      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/autofittextview-0.2.1.aar/1aeea351abdc86712be194858cff90cd/jars/classes.jar!/" />
+      <root url="jar://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/autofittextview-0.2.1.aar/668e09b1d3a4c8c2895b63591a8e2aad/jars/classes.jar!/" />
+      <root url="file://$USER_HOME$/.gradle/caches/transforms-1/files-1.1/autofittextview-0.2.1.aar/668e09b1d3a4c8c2895b63591a8e2aad/res" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>

@@ -304,7 +304,7 @@ public final class PopcornApplication extends Application implements IPopcornApp
                 configUseCase.getConfig().getCinemaUrl()
         );
 
-        final TmdbProvider tmdbProvider = new TmdbProvider(configUseCase.getConfig().getPosterUrl(), "");
+        final TmdbProvider tmdbProvider = new TmdbProvider(configUseCase.getConfig().getPosterUrl(), "e98b412771ccf982c7a7fa8063878926");
         final SubtitlesRepository cinemaSubtitlesRepository = new SubtitlesRepository(configUseCase.getConfig().getSubtitlesUrl());
 
         final ContentRepository animeContentRepository = new ContentRepository(
@@ -480,17 +480,19 @@ public final class PopcornApplication extends Application implements IPopcornApp
                                     observables.add(provider.getDetails(videoInfo));
                                 }
                             }
+                            final int[] attemps = {0};
                             detailsDisposable = Observable.merge(observables).subscribe(new Consumer<VideoInfo>() {
 
                                 @Override
                                 public void accept(@io.reactivex.annotations.NonNull VideoInfo videoInfo) throws Exception {
                                     detailsUseCase.getVideoInfoProperty().setValue(videoInfo);
-                                    new Handler().postDelayed(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            Logger.debug(videoInfo.toString());
-                                        }
-                                    }, 5000);
+                                    try {
+                                        attemps[0] += 1;
+                                        Logger.debug("open attempts: "+ attemps[0]);
+                                        Logger.debug( "videoInfo: " + videoInfo.toString());
+                                    } catch (Exception ex) {
+                                        ex.printStackTrace();
+                                    }
                                 }
                             }, new Consumer<Throwable>() {
 

@@ -2,14 +2,19 @@ package se.popcorn_time.mobile.ui;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.sax.EndElementListener;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.graphics.drawable.DrawableCompat;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.Window;
 
 import se.popcorn_time.IUseCaseManager;
 import se.popcorn_time.UIUtils;
@@ -27,11 +32,17 @@ public final class DetailsActivity extends LocaleActivity {
 
     private VideoInfo videoInfo;
 
+    protected boolean canFinish = false;
+
     private MenuItem favoritesMenuItem;
+    private DetailsVideoFragment fragment;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        if (Configuration.ORIENTATION_PORTRAIT == getResources().getConfiguration().orientation) {
+            supportPostponeEnterTransition();
+        }
         UIUtils.transparentStatusBar(this);
         videoInfo = ((IUseCaseManager) getApplication()).getDetailsUseCase().getVideoInfoProperty().getValue();
         if (videoInfo != null) {
@@ -76,8 +87,16 @@ public final class DetailsActivity extends LocaleActivity {
     }
 
     @Override
+    public void onEnterAnimationComplete() {
+        super.onEnterAnimationComplete();
+        if (getIntent().getBooleanExtra("normal", false)) {
+            fragment.enterAnimationsFinished();
+        }
+    }
+
+    @Override
     public void onBackPressed() {
-        super.onBackPressed();
+        fragment.finish(DetailsActivity.super::onBackPressed);
         clear = true;
     }
 
@@ -95,10 +114,10 @@ public final class DetailsActivity extends LocaleActivity {
     }
 
     private void addFragment(@NonNull Class<? extends Fragment> clazz) {
-        Fragment fragment = getSupportFragmentManager().findFragmentByTag(TAG_FRAGMENT_DETAILS);
+        fragment = (DetailsVideoFragment) getSupportFragmentManager().findFragmentByTag(TAG_FRAGMENT_DETAILS);
         if (fragment == null) {
             try {
-                fragment = clazz.newInstance();
+                fragment = (DetailsVideoFragment) clazz.newInstance();
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -111,6 +130,8 @@ public final class DetailsActivity extends LocaleActivity {
 
     public static void start(@NonNull Context context, @NonNull VideoInfo videoInfo) {
         ((IUseCaseManager) context.getApplicationContext()).getDetailsUseCase().getVideoInfoProperty().setValue(videoInfo);
-        context.startActivity(new Intent(context, DetailsActivity.class));
+        Intent start = new Intent(context, DetailsActivity.class);
+        start.putExtra("normal", true);
+        context.startActivity(start);
     }
 }

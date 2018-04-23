@@ -1,39 +1,49 @@
 package se.popcorn_time.mobile.ui;
 
 import android.Manifest;
+import android.animation.Animator;
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.content.Intent;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.graphics.drawable.BitmapDrawable;
-import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.sax.EndElementListener;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
+import android.support.design.widget.AppBarLayout;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.SharedElementCallback;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.drawable.DrawableCompat;
+import android.support.v4.widget.NestedScrollView;
 import android.support.v7.app.AppCompatActivity;
-import android.support.v7.graphics.Palette;
 import android.support.v7.widget.AppCompatButton;
-import android.support.v7.widget.AppCompatImageView;
-import android.support.v7.widget.Toolbar;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.SpannableString;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.RelativeSizeSpan;
+import android.transition.Transition;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewAnimationUtils;
+import android.view.Window;
+import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
 import android.widget.AdapterViewFlipper;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -80,6 +90,7 @@ import se.popcorn_time.base.utils.NetworkUtil;
 import se.popcorn_time.mobile.PopcornApplication;
 import se.popcorn_time.mobile.R;
 import se.popcorn_time.mobile.model.content.ContentRepository;
+import se.popcorn_time.mobile.ui.adapter.PeopleAdapter;
 import se.popcorn_time.mobile.ui.adapter.VideoPosterAdapter;
 import se.popcorn_time.mobile.ui.dialog.OptionDialog;
 import se.popcorn_time.mobile.ui.dialog.WatchDialog;
@@ -130,6 +141,15 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
     protected ItemSelectButton torrentsBtn;
     private FrameLayout posterParent;
 
+    private RecyclerView recyclerActors;
+    private PeopleAdapter actorsAdapter;
+    protected NestedScrollView nestedScrollView;
+    View viewDetailsHeader;
+    private boolean canEnableBtns = false;
+    private boolean buttonsShown = false;
+    private boolean transitioned = false;
+    private AppBarLayout appBarLayout;
+
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -144,50 +164,50 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
     @Override
     public void onViewCreated(View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-        ((AppCompatActivity) getActivity()).setSupportActionBar((Toolbar) view.findViewById(R.id.toolbar));
+        ((AppCompatActivity) getActivity()).setSupportActionBar(view.findViewById(R.id.toolbar));
         ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         ((AppCompatActivity) getActivity()).getSupportActionBar().setDisplayShowTitleEnabled(false);
+        nestedScrollView = view.findViewById(R.id.nested_scroll);
         posterParent = view.findViewById(R.id.poster_parent);
-        poster = (ImageView) view.findViewById(R.id.poster);
-        backdrops = (AdapterViewFlipper) view.findViewById(R.id.backdrops);
-        ratingbar = (RatingBar) view.findViewById(R.id.ratingbar);
-        ratingbarText = (TextView) view.findViewById(R.id.ratingbar_text);
-        title = (TextView) view.findViewById(R.id.title);
-        genre = (TextView) view.findViewById(R.id.genre);
-        year = (TextView) view.findViewById(R.id.year);
-        duration = (TextView) view.findViewById(R.id.duration);
-        description = (TextView) view.findViewById(R.id.description);
-        playBtn = (FloatingActionButton) view.findViewById(R.id.play);
-        playBtn.setOnClickListener(new View.OnClickListener() {
-
-            @Override
-            public void onClick(View v) {
-                final Torrent torrent = detailsUseCase.getTorrentChoiceProperty().getItem();
-                if (torrent != null) {
-                    watch(torrent);
-                }
+        poster = view.findViewById(R.id.poster);
+        backdrops = view.findViewById(R.id.backdrops);
+        ratingbar = view.findViewById(R.id.ratingbar);
+        ratingbarText = view.findViewById(R.id.ratingbar_text);
+        title = view.findViewById(R.id.title);
+        genre = view.findViewById(R.id.genre);
+        year = view.findViewById(R.id.year);
+        duration = view.findViewById(R.id.duration);
+        description = view.findViewById(R.id.description);
+        playBtn = view.findViewById(R.id.play);
+        recyclerActors = view.findViewById(R.id.recyclerActors);
+        viewDetailsHeader = view.findViewById(R.id.view_details_header);
+        playBtn.setOnClickListener(v -> {
+            final Torrent torrent = detailsUseCase.getTorrentChoiceProperty().getItem();
+            if (torrent != null) {
+                watch(torrent);
             }
         });
-        downloadBtn = (FloatingActionButton) view.findViewById(R.id.download);
+        downloadBtn = view.findViewById(R.id.download);
 
         final View additionalDetails = view.findViewById(R.id.additional_details);
         ((HeaderBehavior) ((CoordinatorLayout.LayoutParams) view.findViewById(R.id.appbar).getLayoutParams()).getBehavior()).setBottomContent(additionalDetails);
 
-        watchedButton = (ToggleButton) additionalDetails.findViewById(R.id.watched);
-        imdbBtn = (Button) additionalDetails.findViewById(R.id.imdb);
-        trailerBtn = (AppCompatButton) additionalDetails.findViewById(R.id.trailer);
-        additionalDescription = (TextView) additionalDetails.findViewById(R.id.additional_description);
-        additionalReleaseDate = (TextView) additionalDetails.findViewById(R.id.additional_release_date);
+        watchedButton = additionalDetails.findViewById(R.id.watched);
+        imdbBtn = additionalDetails.findViewById(R.id.imdb);
+        trailerBtn = additionalDetails.findViewById(R.id.trailer);
+        additionalDescription = additionalDetails.findViewById(R.id.additional_description);
+        additionalReleaseDate = additionalDetails.findViewById(R.id.additional_release_date);
         additionalControls = additionalDetails.findViewById(R.id.additional_controls);
-        subtitlesBtn = (ItemSelectButton) additionalDetails.findViewById(R.id.subtitles);
+        subtitlesBtn = additionalDetails.findViewById(R.id.subtitles);
         subtitlesBtn.setFragmentManager(getActivity().getSupportFragmentManager());
         subtitlesBtn.setPrompt(R.string.subtitles);
-        dubbingBtn = (ItemSelectButton) additionalDetails.findViewById(R.id.dubbing);
+        dubbingBtn = additionalDetails.findViewById(R.id.dubbing);
         dubbingBtn.setFragmentManager(getActivity().getSupportFragmentManager());
         dubbingBtn.setPrompt(R.string.dubbing);
-        torrentsBtn = (ItemSelectButton) additionalDetails.findViewById(R.id.torrents);
+        torrentsBtn = additionalDetails.findViewById(R.id.torrents);
         torrentsBtn.setFragmentManager(getActivity().getSupportFragmentManager());
         torrentsBtn.setPrompt(R.string.torrents);
+        appBarLayout = view.findViewById(R.id.appbar);
 
         LayerDrawable stars = (LayerDrawable) ratingbar.getProgressDrawable();
         DrawableCompat.setTint(DrawableCompat.wrap(stars.getDrawable(0)), Color.WHITE);
@@ -199,7 +219,55 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
         trailerBtn.setSupportBackgroundTintList(list);
         playBtn.setBackgroundTintList(list);
         downloadBtn.setBackgroundTintList(list);
+        AppCompatButton showImdbInfo = view.findViewById(R.id.show_imdb_info);
+        showImdbInfo.setSupportBackgroundTintList(list);
+
+        nestedScrollView.setFillViewport(true);
+
+        View imdbInfo = view.findViewById(R.id.imdb_info);
+        showImdbInfo.setOnClickListener(v -> {
+            if (imdbInfo.getVisibility() == View.GONE) {
+                imdbInfo.setVisibility(View.VISIBLE);
+                showImdbInfo.setCompoundDrawablesWithIntrinsicBounds(getResources().getDrawable(R.drawable.ic_arrow_up), null, null, null);
+            } else {
+                imdbInfo.setVisibility(View.GONE);
+                showImdbInfo.setCompoundDrawablesWithIntrinsicBounds(getResources().getDrawable(R.drawable.ic_arrow_down), null, null, null);
+            }
+        });
+
+        if (!getActivity().getIntent().getBooleanExtra("normal", false)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                getActivity().getWindow().getEnterTransition().addListener(new Transition.TransitionListener() {
+                    @Override
+                    public void onTransitionStart(Transition transition) {
+
+                    }
+
+                    @Override
+                    public void onTransitionEnd(Transition transition) {
+                        enterAnimationsFinished();
+                    }
+
+                    @Override
+                    public void onTransitionCancel(Transition transition) {
+
+                    }
+
+                    @Override
+                    public void onTransitionPause(Transition transition) {
+
+                    }
+
+                    @Override
+                    public void onTransitionResume(Transition transition) {
+
+                    }
+                });
+            }
+        }
     }
+
+
 
     @Override
     public void onStart() {
@@ -219,6 +287,14 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
         if (backdrops != null) {
             backdrops.stopFlipping();
         }
+    }
+
+    void finish(EndElementListener endListener) {
+        appBarLayout.setExpanded(true, true);
+        circularHideCard(nestedScrollView, nestedScrollView.getMeasuredWidth()/2, 0, null);
+        circularHideCard(downloadBtn, downloadBtn.getMeasuredWidth() / 2, downloadBtn.getMeasuredHeight() / 2, null);
+        circularHideCard(playBtn, playBtn.getMeasuredWidth() / 2, playBtn.getMeasuredHeight() / 2, null);
+        circularHideCard(viewDetailsHeader, viewDetailsHeader.getMeasuredWidth()/2, 0, endListener);
     }
 
     @Override
@@ -258,11 +334,12 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
                         foreDrawable = ContextCompat.getDrawable(getContext(), R.drawable.ripple_image);
                     }
                     posterParent.setForeground(foreDrawable);
+                    getActivity().supportStartPostponedEnterTransition();
                 }
 
                 @Override
                 public void onError() {
-
+                    getActivity().supportStartPostponedEnterTransition();
                 }
             });
         }
@@ -309,6 +386,11 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
         } else {
             trailerBtn.setVisibility(View.VISIBLE);
             trailerBtn.setOnClickListener(new OnTrailerClickListener(videoInfo.getTrailer()));
+        }
+        if (videoInfo.getCast() != null && actorsAdapter == null) {
+            actorsAdapter = new PeopleAdapter(videoInfo.getCast());
+            recyclerActors.setAdapter(actorsAdapter);
+            recyclerActors.setLayoutManager(new LinearLayoutManager(getActivity(), RecyclerView.HORIZONTAL, false));
         }
     }
 
@@ -395,8 +477,17 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
                 } else {
                     showDownloadBtn(t);
                 }
-                playBtn.setVisibility(View.VISIBLE);
-                downloadBtn.setVisibility(View.VISIBLE);
+                if (transitioned) {
+                    if (!buttonsShown) {
+                        buttonsShown = true;
+                        circularRevealCard(downloadBtn, downloadBtn.getMeasuredWidth() / 2, downloadBtn.getMeasuredHeight() / 2);
+                        circularRevealCard(playBtn, playBtn.getMeasuredWidth() / 2, playBtn.getMeasuredHeight() / 2);
+                    } else {
+                        playBtn.setVisibility(View.VISIBLE);
+                        downloadBtn.setVisibility(View.VISIBLE);
+                    }
+                }
+                canEnableBtns = true;
                 additionalControls.setVisibility(View.VISIBLE);
                 return;
             }
@@ -732,6 +823,20 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
         return Cinema.TYPE_MOVIES.equals(videoInfo.getType()) || Cinema.TYPE_TV_SHOWS.equals(videoInfo.getType());
     }
 
+    public void enterAnimationsFinished() {
+        Logger.debug("enterAnimationsFinished");
+        circularRevealCard(nestedScrollView, nestedScrollView.getMeasuredWidth()/2, 0);
+        transitioned = true;
+        if (canEnableBtns) {
+            if (!buttonsShown) {
+                buttonsShown = true;
+                circularRevealCard(downloadBtn, downloadBtn.getMeasuredWidth() / 2, downloadBtn.getMeasuredHeight() / 2);
+                circularRevealCard(playBtn, playBtn.getMeasuredWidth() / 2, playBtn.getMeasuredHeight() / 2);
+            }
+        }
+        circularRevealCard(viewDetailsHeader, viewDetailsHeader.getMeasuredWidth()/2, 0);
+    }
+
     private final class OnImdbClickListener implements View.OnClickListener {
 
         private final String imdb;
@@ -762,4 +867,87 @@ public abstract class DetailsVideoFragment<T extends VideoInfo, V extends IDetai
             TrailerActivity.start(v.getContext(), trailer);
         }
     }
+    // The collapse points is where the animation collapses into
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    public void circularHideCard(final View view, int collapsePointX, int collapsePointY, EndElementListener endListener) {
+
+        // Radius is whichever dimension is the longest on our screen
+        float finalRadius = Math.max(view.getWidth(), view.getHeight());
+
+        // Start circular animation
+        Animator animator = ViewAnimationUtils.createCircularReveal(view, collapsePointX, collapsePointY, finalRadius, 0);
+        animator.setInterpolator(new AccelerateDecelerateInterpolator());
+        animator.setDuration(500);
+        animator.start();
+
+        // Listen for completion and hide view
+        animator.addListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+                view.setVisibility(View.INVISIBLE);
+                if (endListener != null) {
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            endListener.end();
+                        }
+                    }, 200);
+                }
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+
+            }
+        });
+    }
+
+    // The expansion points is where the animation starts
+    @TargetApi(Build.VERSION_CODES.LOLLIPOP)
+    private void circularRevealCard(
+            View view, int expansionPointX, int expansionPointY) {
+        // Radius is whichever dimension is the longest on our screen
+        float finalRadius = Math.max(view.getWidth(), view.getHeight());
+
+        // Start circular animation
+        Animator circularReveal = ViewAnimationUtils.createCircularReveal(view, expansionPointX, expansionPointY, 0, finalRadius * 1.1f);
+        circularReveal.setDuration(500);
+
+        // make the view visible and start the animation
+        view.setVisibility(View.VISIBLE);
+        circularReveal.start();
+
+        circularReveal.addListener(new Animator.AnimatorListener() {
+            @Override
+            public void onAnimationStart(Animator animation) {
+                view.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onAnimationEnd(Animator animation) {
+
+            }
+
+            @Override
+            public void onAnimationCancel(Animator animation) {
+
+            }
+
+            @Override
+            public void onAnimationRepeat(Animator animation) {
+
+            }
+        });
+    }
+
 }

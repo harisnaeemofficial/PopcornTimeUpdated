@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
 
+import com.squareup.picasso.Callback;
 import com.squareup.picasso.Picasso;
 import com.squareup.picasso.RequestCreator;
 
@@ -18,6 +19,7 @@ import static com.squareup.picasso.MemoryPolicy.NO_CACHE;
 public final class VideoPosterAdapter extends BaseAdapter {
 
     private String[] urls;
+    private boolean first = true;
 
     public VideoPosterAdapter(@Nullable String[] urls) {
         this.urls = urls;
@@ -59,6 +61,8 @@ public final class VideoPosterAdapter extends BaseAdapter {
             if (Configuration.ORIENTATION_PORTRAIT == viewGroup.getContext().getResources().getConfiguration().orientation) {
                 creator.transform(new GrayscaleTransformation(picasso));
             }
+
+
             creator.into(imageView);
             if (i + 1 < urls.length) {
                 // preload next image

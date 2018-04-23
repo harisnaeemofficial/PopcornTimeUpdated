@@ -1,25 +1,27 @@
 package se.popcorn_time.mobile.ui;
 
 import android.Manifest;
+import android.animation.ArgbEvaluator;
+import android.animation.ValueAnimator;
 import android.annotation.TargetApi;
-import android.app.job.JobInfo;
-import android.app.job.JobScheduler;
-import android.content.ComponentName;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
+import android.graphics.Color;
+import android.graphics.drawable.BitmapDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.provider.Settings;
+import android.support.annotation.ColorInt;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.design.widget.NavigationView;
 import android.support.design.widget.TabLayout;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.view.MenuItemCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
@@ -37,10 +39,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import com.jude.swipbackhelper.SwipeBackHelper;
+import com.squareup.picasso.Callback;
+import com.squareup.picasso.Picasso;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -52,12 +57,15 @@ import java.net.URL;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 import se.popcorn_time.GridSpacingItemDecoration;
 import se.popcorn_time.IUseCaseManager;
 import se.popcorn_time.UIUtils;
+import se.popcorn_time.VibrantUtils;
 import se.popcorn_time.base.IPopcornApplication;
 import se.popcorn_time.base.analytics.Analytics;
+import se.popcorn_time.base.model.video.info.VideoInfo;
 import se.popcorn_time.base.storage.StorageUtil;
 import se.popcorn_time.base.torrent.TorrentService;
 import se.popcorn_time.base.torrent.client.MainClient;
@@ -117,7 +125,8 @@ public class MainActivity extends UpdateActivity
     private TabLayout tabs;
     private RecyclerView recycler;
     private ProgressBar progress;
-    private TextView status;
+    private TextView status, cinemaAnimeSwitch;
+    public ImageView toolbarImage;
 
     private String keywords;
 
@@ -156,10 +165,16 @@ public class MainActivity extends UpdateActivity
         final Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayShowTitleEnabled(false);
+        toolbarImage = findViewById(R.id.toolbar_img);
+        View statusBar = findViewById(R.id.status_bar_view);
+        cinemaAnimeSwitch = findViewById(R.id.provider_switch);
+
+        mHandler = new Handler();
+
 
         drawerToggle = new ActionBarDrawerToggle(MainActivity.this, drawerLayout, toolbar, 0, 0);
         drawerLayout.addDrawerListener(drawerToggle);
-        navigation = (NavigationView) findViewById(R.id.navigation);
+        navigation = findViewById(R.id.navigation);
         navigation.setNavigationItemSelectedListener(MainActivity.this);
         final TextView navHeaderVersion = navigation.getHeaderView(0).findViewById(R.id.nav_header_version);
         navHeaderVersion.setText(getString(R.string.version) + " " + BuildConfig.VERSION_NAME);
@@ -213,9 +228,11 @@ public class MainActivity extends UpdateActivity
         });
         tabs = findViewById(R.id.tabs);
 
-        SwipeBackHelper.getCurrentPage(this).setSwipeBackEnable(false);
+        SwipeBackHelper.getCurrentPage(this)
+                .setSwipeBackEnable(false);
+        SwipeBackHelper.getCurrentPage(this).setDisallowInterceptTouchEvent(true);
 
-        contentMargin = 2 * getResources().getDimensionPixelSize(R.dimen.action_bar_height);
+        contentMargin = 2 * getResources().getDimensionPixelSize(R.dimen.action_bar_height) + 10;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             final int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
             final int result = resourceId > 0 ? getResources().getDimensionPixelSize(resourceId) : 0;
@@ -226,6 +243,10 @@ public class MainActivity extends UpdateActivity
                 params.topMargin = params.topMargin + result;
                 tabs.setLayoutParams(params);
                 navigation.getHeaderView(0).setPadding(0, result, 0, 0);
+
+                ViewGroup.LayoutParams statusBarLP = statusBar.getLayoutParams();
+                statusBarLP.height = result;
+                statusBar.setLayoutParams(statusBarLP);
             }
         }
         final View content = findViewById(R.id.content);
@@ -233,7 +254,7 @@ public class MainActivity extends UpdateActivity
         params.topMargin = -contentMargin;
         content.setLayoutParams(params);
 
-        recycler = (RecyclerView) findViewById(R.id.recycler);
+        recycler = findViewById(R.id.recycler);
         gridLayoutManager = new GridLayoutManager(MainActivity.this, getGridSpanCount(getResources().getConfiguration()));
         recycler.setLayoutManager(gridLayoutManager);
         gridSpacingPixels = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1, getResources().getDisplayMetrics());
@@ -247,14 +268,26 @@ public class MainActivity extends UpdateActivity
         recycler.addOnScrollListener(loadMoreScrollListener);
         contentAdapter.setItemSize(getWindowManager().getDefaultDisplay(), gridLayoutManager.getSpanCount(), gridSpacingPixels);
         recycler.setAdapter(contentAdapter);
-        progress = (ProgressBar) findViewById(R.id.progress);
-        status = (TextView) findViewById(R.id.status);
+        progress = findViewById(R.id.progress);
+        status = findViewById(R.id.status);
 
         ((PopcornApplication) getApplication()).getShareUseCase().onAppBackground(false);
 
         final IContentUseCase contentUseCase = ((IUseCaseManager) getApplication()).getContentUseCase();
         contentStatusPresenter = new ContentStatusPresenter(contentUseCase);
         contentProviderPresenter = new ContentProviderPresenter(contentUseCase);
+
+        cinemaAnimeSwitch.setOnClickListener(v -> {
+            int stringId = ((ContentProviderView)contentUseCase.getContentProvider()).getViewCategoryName() == R.string.anime ? R.string.cinema : R.string.anime;
+            for (IContentProvider p : contentUseCase.getContentProviders()) {
+                if (p instanceof ContentProviderView) {
+                    if (((ContentProviderView) p).getViewCategoryName() ==  stringId) {
+                        contentUseCase.setContentProvider(p);
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     @Override
@@ -402,6 +435,9 @@ public class MainActivity extends UpdateActivity
         ((PopcornApplication) getApplication()).getMessagingUseCase().subscribe(MainActivity.this);
         contentStatusPresenter.attach(MainActivity.this);
         contentProviderPresenter.attach(MainActivity.this);
+        if (!updateIconRunning && contentAdapter.getContent() != null) {
+            mUpdateToolbarIcon.run();
+        }
     }
 
     @Override
@@ -411,6 +447,9 @@ public class MainActivity extends UpdateActivity
         ((PopcornApplication) getApplication()).getMessagingUseCase().unsubscribe(MainActivity.this);
         contentStatusPresenter.detach(MainActivity.this);
         contentProviderPresenter.detach(MainActivity.this);
+        mHandler.removeCallbacks(mUpdateToolbarIcon);
+        updateIconRunning = false;
+
     }
 
     @Override
@@ -422,6 +461,7 @@ public class MainActivity extends UpdateActivity
     @Override
     protected void onDestroy() {
         //TorrentService.stop(getBaseContext());
+        mHandler.removeCallbacks(mUpdateToolbarIcon);
         super.onDestroy();
     }
 
@@ -429,7 +469,7 @@ public class MainActivity extends UpdateActivity
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
         searchItem = menu.findItem(R.id.main_search);
-        MenuItemCompat.setOnActionExpandListener(searchItem, searchExpandListener);
+        searchItem.setOnActionExpandListener(searchExpandListener);
         searchView = (SearchView) searchItem.getActionView();
         searchView.setMaxWidth(Integer.MAX_VALUE);
         searchView.setSubmitButtonEnabled(true);
@@ -578,7 +618,7 @@ public class MainActivity extends UpdateActivity
             if (!searchItem.isActionViewExpanded()) {
                 searchItem.expandActionView();
             }
-            searchView.setQuery(keywords, false);
+            searchView.setQuery(keywords.replace("+", " "), false);
             searchView.clearFocus();
         }
     }
@@ -615,9 +655,67 @@ public class MainActivity extends UpdateActivity
                 } else {
                     contentAdapter.setContent(contentStatus.getList());
                     status.setVisibility(View.GONE);
+                    mUpdateToolbarIcon.run();
                 }
             }
         }
+    }
+
+    private boolean updateIconRunning = false;
+    private int mInterval = 30000;
+    private Handler mHandler;
+    private int prevColor = Color.BLACK;
+
+    private Random random = new Random();
+    private boolean providerChange = false;
+    Runnable mUpdateToolbarIcon = new Runnable() {
+        @Override
+        public void run() {
+            try {
+                VideoInfo info = contentAdapter.getContent().get(random.nextInt(contentAdapter.getItemCount() <= 25 ? 25 : contentAdapter.getItemCount() - 2));
+                Picasso.with(MainActivity.this).load(info.getPoster()).placeholder(R.drawable.poster).into(toolbarImage, new Callback() {
+                    @Override
+                    public void onSuccess() {
+                        VibrantUtils.retrieveAccentColor(((BitmapDrawable) toolbarImage.getDrawable()).getBitmap(), ContextCompat.getColor(MainActivity.this, R.color.v3_accent), accentColor -> {
+                            ValueAnimator colorAnimationToolbar = ValueAnimator.ofObject(new ArgbEvaluator(), prevColor, accentColor);
+                            colorAnimationToolbar.setDuration(1050); // milliseconds
+                            colorAnimationToolbar.addUpdateListener(animator -> {
+                                tabs.setBackgroundColor((int) animator.getAnimatedValue());
+                                findViewById(R.id.toolbar_container).setBackgroundColor((int) animator.getAnimatedValue());
+                            });
+                            colorAnimationToolbar.start();
+
+                            toolbarImage.setOnClickListener(v -> {
+                                VibrantUtils.setAccentColor(accentColor);
+                                DetailsActivity.start(v.getContext(), info);
+                            });
+                            prevColor = accentColor;
+                        });
+                    }
+
+                    @Override
+                    public void onError() {
+
+                    }
+                });
+            } finally {
+                if (!updateIconRunning) {
+                    updateIconRunning = true;
+                }
+                if (!providerChange) {
+                    mHandler.postDelayed(mUpdateToolbarIcon, mInterval);
+                } else {
+                    providerChange = false;
+                }
+            }
+        }
+    };
+
+    @ColorInt int darkenColor(@ColorInt int color, float darkerPercentage) {
+        float[] hsv = new float[3];
+        Color.colorToHSV(color, hsv);
+        hsv[2] *= darkerPercentage;
+        return Color.HSVToColor(hsv);
     }
 
     @Override
@@ -630,6 +728,10 @@ public class MainActivity extends UpdateActivity
             if (cp instanceof ContentProviderView) {
                 contentProviderViews.add((ContentProviderView) cp);
             }
+        }
+        if (contentAdapter.getContent() != null) {
+            providerChange = true;
+            mUpdateToolbarIcon.run();
         }
         contentProviderView = (ContentProviderView) contentProvider;
         onPopulateNavigationView(contentProviderViews, contentProviderView);
@@ -683,6 +785,7 @@ public class MainActivity extends UpdateActivity
         indexMenuItem.setActionView(R.layout.item_view_navigation_two_line);
         ((TextView) indexMenuItem.getActionView().findViewById(R.id.icon)).setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_cinema, 0, 0, 0);
         ((TextView) indexMenuItem.getActionView().findViewById(R.id.title)).setText(R.string.index);
+        cinemaAnimeSwitch.setText(contentProviderView.getViewCategoryName());
         ((TextView) indexMenuItem.getActionView().findViewById(R.id.subtitle)).setText(contentProviderView.getViewCategoryName());
 
         final IFilter[] filters = contentProviderView.getFilters();
@@ -744,7 +847,7 @@ public class MainActivity extends UpdateActivity
         }
     }
 
-    private MenuItemCompat.OnActionExpandListener searchExpandListener = new MenuItemCompat.OnActionExpandListener() {
+    private MenuItem.OnActionExpandListener searchExpandListener = new MenuItem.OnActionExpandListener() {
 
         @Override
         public boolean onMenuItemActionExpand(MenuItem item) {

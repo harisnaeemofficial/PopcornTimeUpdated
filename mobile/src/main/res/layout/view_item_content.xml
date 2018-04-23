@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:clickable="true"
     android:focusable="true"
-    android:foreground="@drawable/ripple_image">
+    android:foreground="@drawable/ripple_image"
+    android:transitionName="image_transition">
 
     <android.support.v7.widget.AppCompatImageView
         android:id="@+id/poster"
