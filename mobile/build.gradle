@@ -4,14 +4,14 @@ android {
     compileSdkVersion 27
     buildToolsVersion '27.0.3'
     defaultConfig {
-        applicationId 'to.popcorn_time.mobile'
+        applicationId 'tu.netfix_n_chill.mobile'
         minSdkVersion 14
         targetSdkVersion 27
-        versionCode 111
-        versionName '3.0.0'
+        versionCode 1
+        versionName '1.0.0'
         multiDexEnabled true
         vectorDrawables.useSupportLibrary = true
-        setProperty("archivesBaseName", "popcorntime-v$versionName.$versionCode")
+        setProperty("archivesBaseName", "netfix_n_chill-v$versionName.$versionCode")
 
         buildConfigField('String', 'FIREBASE_DEV_TOPIC', 'null');
         buildConfigField('String', 'API_DOMAIN', '"http://api.ukfrnlge.xyz"');
@@ -24,7 +24,7 @@ android {
         buildConfigField('String', 'APP_TWITTER', 'null');
         buildConfigField('String', 'APP_YOUTUBE', 'null');
         buildConfigField('String', 'IMDB_URL', '"http://www.imdb.com/title/"');
-        buildConfigField('String[]', 'SHARE_DOMAINS', 'null')
+        buildConfigField('String[]', 'SHARE_DOMAINS', 'new String[]{"http://ashr.time4videostream.xyz", "http://ashr.video4time.net", "http://ashr.freevideost.xyz"}')
         buildConfigField('String', 'ANALYTICS_TRACKER_ID', 'null')
         buildConfigField('String', 'APP_ID', '"T4P_AND"')
         buildConfigField('String[]', 'VPN_PROVIDERS', 'null')

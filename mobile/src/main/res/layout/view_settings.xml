@@ -11,7 +11,7 @@
         android:background="@drawable/toolbar_bkg" />
 
     <fragment
-        android:name="se.popcorn_time.mobile.ui.SettingsFragment"
+        android:name="tu.netfix_n_chill.mobile.ui.SettingsFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:tag="fragment_settings" />

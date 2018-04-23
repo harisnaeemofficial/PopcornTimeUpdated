@@ -77,7 +77,7 @@
                 tools:text="Description"/>
         </ScrollView>
 
-        <se.popcorn_time.mobile.ui.widget.ItemSelectButton
+        <tu.netfix_n_chill.mobile.ui.widget.ItemSelectButton
             android:id="@+id/video_subtitles"
             style="@style/VideoItemSelectButton"
             android:layout_width="match_parent"
@@ -85,7 +85,7 @@
             android:layout_marginTop="7dp"
             tools:text="@string/subtitles"/>
 
-        <se.popcorn_time.mobile.ui.widget.ItemSelectButton
+        <tu.netfix_n_chill.mobile.ui.widget.ItemSelectButton
             android:id="@+id/video_torrents"
             style="@style/VideoItemSelectButton"
             android:layout_width="match_parent"

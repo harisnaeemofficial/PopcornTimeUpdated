@@ -62,7 +62,7 @@
             android:summaryOn="@string/enabled"
             android:title="@string/use_only_wifi" />
 
-        <se.popcorn_time.NumberPickerPreference
+        <tu.netfix_n_chill.NumberPickerPreference
             android:key="downloads_connections_limit"
             android:persistent="false"
             android:title="@string/connections_limit"
@@ -80,7 +80,7 @@
             android:title="@string/maximum_upload_speed"
             tools:summary="100 KB/s" />
 
-        <se.popcorn_time.FolderChooserPreference
+        <tu.netfix_n_chill.FolderChooserPreference
             android:key="downloads_cache_folder"
             android:persistent="false"
             android:title="@string/cache_folder"
@@ -102,13 +102,13 @@
 
     <PreferenceCategory android:title="@string/about">
 
-        <se.popcorn_time.ActionPreference
+        <tu.netfix_n_chill.ActionPreference
             android:key="about_visit_site"
             android:persistent="false"
             android:title="@string/visit_site"
             tools:summary="http://simple.com" />
 
-        <se.popcorn_time.ActionPreference
+        <tu.netfix_n_chill.ActionPreference
             android:key="about_visit_forum"
             android:persistent="false"
             android:title="@string/visit_forum"

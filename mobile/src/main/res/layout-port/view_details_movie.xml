@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"
-        app:layout_behavior="se.popcorn_time.HeaderBehavior">
+        app:layout_behavior="tu.netfix_n_chill.HeaderBehavior">
 
         <android.support.design.widget.CollapsingToolbarLayout
             android:id="@+id/collapsing_toolbar"
@@ -98,6 +98,7 @@
         android:layout_marginRight="80dp"
         android:clickable="true"
         android:visibility="invisible"
+        tools:visibility="visible"
         app:elevation="8dp"
         app:fabSize="normal"
         app:layout_anchor="@id/appbar"
@@ -111,6 +112,7 @@
         android:layout_height="wrap_content"
         android:clickable="true"
         android:visibility="invisible"
+        tools:visibility="visible"
         app:elevation="8dp"
         app:fabSize="normal"
         app:layout_anchor="@id/appbar"

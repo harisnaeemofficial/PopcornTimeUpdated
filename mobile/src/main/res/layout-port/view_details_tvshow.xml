@@ -12,7 +12,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"
-        app:layout_behavior="se.popcorn_time.HeaderBehavior">
+        app:layout_behavior="tu.netfix_n_chill.HeaderBehavior">
 
         <android.support.design.widget.CollapsingToolbarLayout
             android:id="@+id/collapsing_toolbar"
@@ -41,7 +41,10 @@
                     android:transitionName="image_transition"
                     tools:src="@drawable/poster" />
 
-                <include layout="@layout/view_details_header" />
+                <include android:id="@+id/view_details_header"
+                    layout="@layout/view_details_header"
+                    android:visibility="invisible"
+                    tools:visibility="visible" />
             </FrameLayout>
 
             <View
@@ -63,6 +66,8 @@
         android:id="@+id/nested_scroll"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:visibility="invisible"
+        tools:visibility="visible"
         app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
         <FrameLayout
@@ -93,6 +98,8 @@
         android:clickable="true"
         app:elevation="8dp"
         app:fabSize="normal"
+        android:visibility="invisible"
+        tools:visibility="visible"
         app:layout_anchor="@id/appbar"
         app:layout_anchorGravity="bottom|right|end"
         app:srcCompat="@drawable/ic_details_play"
@@ -105,6 +112,8 @@
         android:clickable="true"
         app:elevation="8dp"
         app:fabSize="normal"
+        android:visibility="invisible"
+        tools:visibility="visible"
         app:layout_anchor="@id/appbar"
         app:layout_anchorGravity="bottom|right|end"
         app:srcCompat="@drawable/ic_item_download_resume"

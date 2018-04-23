@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="se.popcorn_time.mobile"
+    package="tu.netfix_n_chill.mobile"
     android:installLocation="auto">
 
     <uses-permission android:name="android.permission.INTERNET" />
@@ -42,16 +42,25 @@
             android:launchMode="singleTask">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <action android:name="se.popcorn_time.mobile.ui.MainActivity" />
+                <action android:name="tu.netfix_n_chill.mobile.ui.MainActivity" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
         <activity
+            android:parentActivityName=".ui.DetailsActivity"
+            android:label="Video Player"
+            android:screenOrientation="sensorLandscape"
+            android:icon="@drawable/ic_movie_white_36dp"
             android:name=".ui.VLCPlayerActivity"
             android:configChanges="orientation|screenSize|locale"
-            android:launchMode="singleTask" />
+            android:launchMode="singleInstance"
+            android:taskAffinity="tu.netfix_n_chill.mobile.VLCPlayerActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".ui.DetailsActivity" />
+        </activity>
         <activity
             android:name=".ui.DetailsActivity"
             android:launchMode="singleTask"
@@ -72,7 +81,7 @@
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
 
-                <action android:name="se.popcorn_time.mobile.ui.DownloadsActivity" />
+                <action android:name="tu.netfix_n_chill.mobile.ui.DownloadsActivity" />
             </intent-filter>
         </activity>
         <activity
@@ -86,19 +95,19 @@
 
         <service android:name="com.player.ConnectableNotificationService" />
         <service android:name="com.player.cast.WebServerService" />
-        <service android:name="se.popcorn_time.base.torrent.TorrentService" />
-        <service android:name="se.popcorn_time.model.messaging.PopcornMessagingService">
+        <service android:name="tu.netfix_n_chill.base.torrent.TorrentService" />
+        <service android:name="tu.netfix_n_chill.model.messaging.PopcornMessagingService">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
 
-        <receiver android:name="se.popcorn_time.base.receiver.ConnectivityReceiver">
+        <receiver android:name="tu.netfix_n_chill.base.receiver.ConnectivityReceiver">
             <intent-filter>
                 <action android:name="android.net.conn.CONNECTIVITY_CHANGE" />
             </intent-filter>
         </receiver>
-        <receiver android:name="se.popcorn_time.base.receiver.AppInstalled">
+        <receiver android:name="tu.netfix_n_chill.base.receiver.AppInstalled">
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_INSTALL" />
                 <action android:name="android.intent.action.PACKAGE_ADDED" />
@@ -107,8 +116,8 @@
         </receiver>
 
         <provider
-            android:name="se.popcorn_time.base.database.DBProvider"
-            android:authorities="dp.ws.popcorntime"
+            android:name="tu.netfix_n_chill.base.database.DBProvider"
+            android:authorities="dbp.tu.netfix_n_chill"
             android:exported="false"
             android:label="@string/application_name" />
 
@@ -130,7 +139,7 @@
             <intent-filter>
                 <category android:name="android.intent.category.DEFAULT" />
 
-                <action android:name="se.popcorn_time.mobile.ui.UpdateGoogleActivity" />
+                <action android:name="tu.netfix_n_chill.mobile.ui.UpdateGoogleActivity" />
             </intent-filter>
         </activity>
     </application>

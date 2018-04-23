@@ -121,7 +121,7 @@
                 android:layout_gravity="bottom"
                 android:background="?attr/colorAccent">
 
-                <se.popcorn_time.mobile.ui.widget.ItemSelectButton
+                <tu.netfix_n_chill.mobile.ui.widget.ItemSelectButton
                     android:id="@+id/seasons"
                     style="@style/Widget.AppCompat.Button.Borderless"
                     android:layout_width="wrap_content"
@@ -157,7 +157,7 @@
             android:layout_height="1dp"
             android:background="@color/v3_details_additional_delimiter" />
 
-        <se.popcorn_time.mobile.ui.widget.ItemSelectButton
+        <tu.netfix_n_chill.mobile.ui.widget.ItemSelectButton
             android:id="@+id/subtitles"
             style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="match_parent"
@@ -176,7 +176,7 @@
             android:layout_marginLeft="72dp"
             android:background="@color/v3_details_additional_delimiter" />
 
-        <se.popcorn_time.mobile.ui.widget.ItemSelectButton
+        <tu.netfix_n_chill.mobile.ui.widget.ItemSelectButton
             android:id="@+id/dubbing"
             style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="match_parent"
@@ -195,7 +195,7 @@
             android:layout_marginLeft="72dp"
             android:background="@color/v3_details_additional_delimiter" />
 
-        <se.popcorn_time.mobile.ui.widget.ItemSelectButton
+        <tu.netfix_n_chill.mobile.ui.widget.ItemSelectButton
             android:id="@+id/torrents"
             style="@style/Widget.AppCompat.Button.Borderless"
             android:layout_width="match_parent"
@@ -264,7 +264,7 @@
 
         <!--find out more-->
 
-        <se.popcorn_time.mobile.ui.widget.CollapsableCardView
+        <tu.netfix_n_chill.mobile.ui.widget.CollapsableCardView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginLeft="5dp"
@@ -317,7 +317,7 @@
 
             </LinearLayout>
 
-        </se.popcorn_time.mobile.ui.widget.CollapsableCardView>
+        </tu.netfix_n_chill.mobile.ui.widget.CollapsableCardView>
 
         <!--recommendations-->
 

@@ -138,13 +138,7 @@ public abstract class MobilePlayerActivity extends AppCompatActivity implements 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            getWindow().setStatusBarColor(getResources().getColor(R.color.overlay));
-            getWindow().setNavigationBarColor(getResources().getColor(R.color.overlay));
-        }
         super.onCreate(savedInstanceState);
-        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
         if (getIntent().getData() != null) {
             videoFile = new File(getIntent().getData().getPath());
             if (!videoFile.exists()) {

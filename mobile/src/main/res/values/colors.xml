@@ -16,7 +16,7 @@
     <color name="second_launch_dialog_text_color">#000000</color>
 
     <color name="v3_background">#292829</color>
-    <color name="v3_accent">#3497d9</color>
+    <color name="v3_accent">#2196F3</color>
     <color name="v3_navigation_list_divider">#09ffffff</color>
     <color name="v3_details_additional_overlay">#cc000000</color>
     <color name="v3_details_additional_delimiter">#19ffffff</color>
