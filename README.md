@@ -9,3 +9,5 @@
 ~~~
 Educational use only!
 ~~~
+
+This project is under the [MIT License](LICENSE) - the best license!
